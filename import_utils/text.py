@@ -55,7 +55,7 @@ def main():
                     FLAGS.dataset_dir, FLAGS.tfrecord_filename, FLAGS.num_shards)
 
   write_mapping_file(entities_to_ids, 'train2id.txt', FLAGS.dataset_dir)
-  write_mapping_file(relations_to_ids, 'test2id.txt', FLAGS.dataset_dir)
+  write_mapping_file(relations_to_ids, 'relation2id.txt', FLAGS.dataset_dir)
 
   print('\nFinished converting the %s dataset!' % (FLAGS.tfrecord_filename))
 
