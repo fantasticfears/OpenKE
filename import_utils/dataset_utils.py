@@ -3,6 +3,8 @@ import sys
 import math
 import os.path
 from typing import Tuple, Dict
+import gentrain
+
 
 def int64_feature(values):
   """Returns a TF-Feature of int64s.
@@ -85,7 +87,10 @@ def _gen_dataset_filename(dataset_dir: str,
 def convert_dataset(split_name: str,
                     loc: int,
                     reader,
-                    entities_names_to_ids: Dict[str, int],
+                    negative_relation_rate: int,
+                    negative_entity_rate: int,
+                    bern: bool,
+                    entities_to_ids: Dict[str, int],
                     relations_to_ids: Dict[str, int],
                     dataset_dir: str,
                     tfrecord_filename: str,
@@ -94,33 +99,58 @@ def convert_dataset(split_name: str,
   Args:
     split_name: The name of the dataset, either 'train' or 'validation'.
     filename: The absolute path to a triplet file (TSV).
-    entities_names_to_ids: A dictionary from entity names (strings) to ids (integers).
+    entities_to_ids: A dictionary from entity names (strings) to ids (integers).
     relations_to_ids: A dictionary from entity names (strings) to ids (integers).
     dataset_dir: The directory where the converted datasets are stored.
   """
   assert split_name in ['train', 'validation']
 
   num_per_shard = int(math.ceil(loc / float(num_shards)))
+  gentrain.init_buff(loc, len(entities_to_ids), len(relations_to_ids))
+
+  for head, relation, tail in reader:
+      triplet = (entities_to_ids[head],
+                  relations_to_ids[relation],
+                  entities_to_ids[tail])
+      read_triplet = gentrain.feed(triplet)
+      sys.stdout.write('\r>> Read triplet %d' % (read_triplet))
+      sys.stdout.flush()
+
+  gentrain.freq()
 
   for shard_id in range(num_shards):
     output_filename = _gen_dataset_filename(
         dataset_dir, split_name, (shard_id, num_shards), tfrecord_filename=tfrecord_filename)
 
-    with tf.python_io.TFRecordWriter(output_filename) as tfrecord_writer:
-      start_ndx = shard_id * num_per_shard
-      end_ndx = min((shard_id+1) * num_per_shard, loc)
-      for i in range(start_ndx, end_ndx):
-        sys.stdout.write('\r>> Writing triplet %d/%d shard %d' % (
-            i+1, loc, shard_id))
-        sys.stdout.flush()
+    valid_tf_writer = tf.python_io.TFRecordWriter(output_filename)
+    ng_ent_tf_writer = [tf.python_io.TFRecordWriter(_gen_dataset_filename(dataset_dir, f"_ng_ent_{i}", (shard_id, num_shards), tfrecord_filename)) for i in range(negative_entity_rate)]
+    ng_rel_tf_writer = [tf.python_io.TFRecordWriter(_gen_dataset_filename(dataset_dir, f"_ng_ent_{i}", (shard_id, num_shards), tfrecord_filename)) for i in range(negative_relation_rate)]
 
-        head, relation, tail = next(reader)
-        triplet = (entities_names_to_ids[head],
-                   relations_to_ids[relation],
-                   entities_names_to_ids[tail])
+    start_ndx = shard_id * num_per_shard
+    end_ndx = min((shard_id+1) * num_per_shard, loc)
+    for i in range(start_ndx, end_ndx):
+      sys.stdout.write('\r>> Writing triplet %d/%d shard %d' % (
+          i+1, loc, shard_id))
+      sys.stdout.flush()
 
+      triplets = gentrain.yield_triplets(negative_entity_rate, negative_relation_rate, bern)
+
+      triplet = triplets.pop(0)
+      example = triplet_to_tfexample(triplet)
+      valid_tf_writer.write(example.SerializeToString())
+      for writer in ng_ent_tf_writer:
+        triplet = triplets.pop(0)
         example = triplet_to_tfexample(triplet)
-        tfrecord_writer.write(example.SerializeToString())
+        writer.write(example.SerializeToString())
+      for writer in ng_rel_tf_writer:
+        triplet = triplets.pop(0)
+        example = triplet_to_tfexample(triplet)
+        writer.write(example.SerializeToString())
+    valid_tf_writer.close()
+    for writer in ng_ent_tf_writer:
+      writer.close()
+    for writer in ng_rel_tf_writer:
+      writer.close()
 
   sys.stdout.write('\n')
   sys.stdout.flush()

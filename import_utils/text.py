@@ -51,7 +51,8 @@ def main():
   with open(os.path.join(FLAGS.dataset_dir, FLAGS.dataset_file), 'r') as f:
     reader = csv.reader(f, delimiter='\t')
     convert_dataset(FLAGS.split_name, loc,
-                    reader, entities_to_ids, relations_to_ids,
+                    reader, 1, 1, True,
+                    entities_to_ids, relations_to_ids,
                     FLAGS.dataset_dir, FLAGS.tfrecord_filename, FLAGS.num_shards)
 
   write_mapping_file(entities_to_ids, 'train2id.txt', FLAGS.dataset_dir)

@@ -1,16 +1,15 @@
 #ifndef TRIPLE_H
 #define TRIPLE_H
-#include "Setting.h"
 
 struct Triple {
 
-	INT h, r, t;
+	int h, r, t;
 
-	static INT minimal(INT a,INT b) {
+	static int minimal(int a,int b) {
 		if (a > b) return b;
 		return a;
 	}
-	
+
 	static bool cmp_list(const Triple &a, const Triple &b) {
 		return (minimal(a.h, a.t) > minimal(b.h, b.t));
 	}
