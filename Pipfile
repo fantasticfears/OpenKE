@@ -9,6 +9,7 @@ name = "pypi"
 
 pyyaml = "*"
 tensorflow = "*"
+testfixtures = "*"
 
 
 [dev-packages]

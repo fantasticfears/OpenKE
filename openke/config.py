@@ -1,0 +1,66 @@
+"""A collection of meta class for options and convenience methods."""
+
+import yaml
+
+def load_from_yaml(filename: str):
+  """returns the parsed object from YAML file."""
+  with open(filename, 'r') as config_file:
+    data = yaml.load(config_file)
+  return data
+
+class TrainOptions(object):
+  """A class pertains training options."""
+
+  DEFAULT_TRAIN_CONFIG_FILENAME = 'train.yaml'
+
+  def __init__(self, yaml_filename: str = DEFAULT_TRAIN_CONFIG_FILENAME):
+    """Loads the config from a file."""
+    config = load_from_yaml(yaml_filename)
+    self._name = config.get('name')
+    self._flow = [TrainStep(step) for step in config.get('flow', [])]
+
+  @property
+  def flow(self):
+    """gets the flow."""
+    return self._flow
+
+  @property
+  def name(self):
+    """gets the train plan by name."""
+    return self._name
+
+class TrainStep(object):
+  """A class pertains a training step."""
+
+  def __init__(self, step):
+    """Loads the train step from a file."""
+    self._state_filename = step.get('state_filename')
+    self._model = step.get('model')
+    self._log_level = step.get('log_level')
+    self._dataset_filenames = step.get('dataset_filenames')
+    self._options = step.get('options')
+
+  @property
+  def state_filename(self):
+    """gets the state filename."""
+    return self._state_filename
+
+  @property
+  def model(self):
+    """gets the model by name."""
+    return self._model
+
+  @property
+  def options(self):
+    """gets the model config dictionary."""
+    return self._options
+
+  @property
+  def log_level(self):
+    """gets the log level."""
+    return self._log_level
+
+  @property
+  def dataset_filenames(self):
+    """gets the dataset filenames."""
+    return self._dataset_filenames
