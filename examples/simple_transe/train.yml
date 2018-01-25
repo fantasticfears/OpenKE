@@ -21,9 +21,9 @@ flow:
     state_filename: "trans_e.ckpt"
     dataset_filenames:
       train:
-        - ""
+        - "valid2id_train_00000-of-00001.tfrecord"
       negative_train:
-        -
+        - "valid2id__ng_ent_0_00000-of-00001.tfrecord"
     log_device_placement: True
     num_gpus: 2
     optimizer: SGD
