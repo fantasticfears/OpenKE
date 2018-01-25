@@ -1,5 +1,6 @@
 """A collection of meta class for options and convenience methods."""
 
+import os
 import yaml
 
 def load_from_yaml(filename: str):
@@ -17,7 +18,8 @@ class TrainOptions(object):
     """Loads the config from a file."""
     config = load_from_yaml(yaml_filename)
     self._name = config.get('name')
-    self._flow = [TrainStep(step) for step in config.get('flow', [])]
+    config_dir = os.path.abspath(os.path.join(yaml_filename, '..'))
+    self._flow = [TrainStep(step, f"{self._name}_{idx}", config_dir) for idx, step in enumerate(config.get('flow', []))]
 
   @property
   def flow(self):
@@ -32,13 +34,28 @@ class TrainOptions(object):
 class TrainStep(object):
   """A class pertains a training step."""
 
-  def __init__(self, step):
+  def __init__(self, step, name, path):
     """Loads the train step from a file."""
     self._state_filename = step.get('state_filename')
     self._model = step.get('model')
     self._log_level = step.get('log_level')
     self._dataset_filenames = step.get('dataset_filenames')
     self._options = step.get('options')
+    self._name = name
+    self._path = path
+    self._log_device_placement = step.get('log_device_placement')
+    self._num_gpus = step.get('num_gpus')
+    self._optimizer = step.get('optimizer')
+
+  @property
+  def optimizer(self):
+    """gets the optimizer."""
+    return self._optimizer
+
+  @property
+  def path(self):
+    """gets the config dir."""
+    return self._path
 
   @property
   def state_filename(self):
@@ -64,3 +81,11 @@ class TrainStep(object):
   def dataset_filenames(self):
     """gets the dataset filenames."""
     return self._dataset_filenames
+
+  @property
+  def log_device_placement(self):
+    return self._log_device_placement
+
+  @property
+  def num_gpus(self):
+    return self._num_gpus

@@ -20,3 +20,7 @@ con.set_optimizer("SGD")
 con.init()
 con.set_model(models.TransE)
 con.run()
+
+
+      # Compute for 100 epochs.
+      for _ in range(100):

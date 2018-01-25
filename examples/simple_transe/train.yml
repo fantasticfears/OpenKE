@@ -1,0 +1,32 @@
+model_options:
+  general: &general
+    embedding_size:
+      entity: 100
+      relation: 100
+    train_iterations: 1000
+    batch_size:
+      positive: 256
+      negative_entities: 256
+      negative_relaiton: 256
+    margin: 1.0
+    alpha: 0.001
+    lambda: 0.000
+  transE: &transE
+    <<: *general
+
+name: "simple_transe"
+flow:
+  - model: TransE
+    log_level: VERBOSE
+    state_filename: "trans_e"
+    dataset_filenames:
+      train:
+        - ""
+      negative_train:
+        -
+    log_device_placement: True
+    num_gpus: 2
+    optimizer: SGD
+    options:
+      <<: *transE
+
