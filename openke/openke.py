@@ -7,6 +7,8 @@ import datetime
 from openke.config import TrainStep, TrainOptions
 import openke.models
 
+MOVING_AVERAGE_DECAY = 0.9999
+
 def build_model(model, options):
   """build model by config."""
   if model == "TransD":
@@ -44,7 +46,7 @@ class Step(object):
     self._next_element = None
     self._stage_area = None
     self._global_step = None
-    self._model_variables = {}
+    self._model_variables = None
 
   @property
   def config(self):
@@ -151,12 +153,16 @@ class Step(object):
     for var in tf.trainable_variables():
       summaries.append(tf.summary.histogram(var.op.name, var))
 
+    # Track the moving averages of all trainable variables.
+    variable_averages = tf.train.ExponentialMovingAverage(
+        MOVING_AVERAGE_DECAY, self._global_step)
+    variables_averages_op = variable_averages.apply(tf.trainable_variables())
+
     # Group all updates to into a single train op.
-    grads_and_vars = self._optimizer.compute_gradients(self._model.loss)
-    self._train_op = apply_gradient_op
+    train_op = tf.group(apply_gradient_op, variables_averages_op)
 
     # Create a saver.
-    saver = tf.train.Saver(tf.global_variables())
+    self._saver = tf.train.Saver(tf.global_variables())
 
     # Build the summary operation from the last tower summaries.
     summary_op = tf.summary.merge(summaries)
@@ -170,16 +176,16 @@ class Step(object):
     sess = tf.Session(config=tf.ConfigProto(
         allow_soft_placement=True,
         log_device_placement=self._config.log_device_placement))
-    sess.run(init)
+    self._session.run(init)
 
     # Start the queue runners.
     tf.train.start_queue_runners(sess=sess)
 
-    summary_writer = tf.summary.FileWriter(self._config.path, sess.graph)
+    summary_writer = tf.summary.FileWriter(self._config.path, self._session.graph)
 
     for step in range(self._config.options['train_iterations']):
       start_time = time.time()
-      _, loss_value = sess.run([self._train_op, loss])
+      _, loss_value = self._session.run([train_op, loss])
       duration = time.time() - start_time
 
       assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
@@ -191,17 +197,17 @@ class Step(object):
 
         format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                       'sec/batch)')
-        print (format_str % (datetime.now(), step, loss_value,
-                             examples_per_sec, sec_per_batch))
+        print(format_str % (datetime.now(), step, loss_value,
+                            examples_per_sec, sec_per_batch))
 
       if step % 100 == 0:
-        summary_str = sess.run(summary_op)
+        summary_str = self._session.run(summary_op)
         summary_writer.add_summary(summary_str, step)
 
       # Save the model checkpoint periodically.
       if step % 1000 == 0 or (step + 1) == self._config.options['train_iterations']:
-        checkpoint_path = os.path.join(self._config.path, 'model.ckpt')
-        saver.save(sess, checkpoint_path, global_step=step)
+        checkpoint_path = os.path.join(self._config.path, self._config.state_filename)
+        self._saver.save(self._session, checkpoint_path, global_step=step)
 
 class TrainFlow(object):
   """Stores and executes a flow of training models."""

@@ -18,7 +18,7 @@ name: "simple_transe"
 flow:
   - model: TransE
     log_level: VERBOSE
-    state_filename: "trans_e"
+    state_filename: "trans_e.ckpt"
     dataset_filenames:
       train:
         - ""
