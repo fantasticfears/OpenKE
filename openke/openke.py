@@ -143,9 +143,9 @@ class Step(object):
     with tf.variable_scope(tf.get_variable_scope()):
       for i in range(self._config.num_gpus):
         try:
-          self._staging_area.put((prepare_batch(self._next_elements, self._session))
-        except tf.errors.OutOfRangeError:
-          pass
+          self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
+        except tf.errors.OutOfRangeError as e:
+          print("all dataset exhausted:", e)
         with tf.device('/gpu:%d' % i):
           with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
             loss = self._model.loss(scope, self._staging_area.get(), self._model_variables, self._config.options)
@@ -183,7 +183,7 @@ class Step(object):
     train_op = tf.group(apply_gradient_op, variables_averages_op)
 
     # Create a saver.
-    self._saver = tf.Train.Saver(tf.global_variables())
+    self._saver = tf.train.Saver(tf.global_variables())
     if restore_if_available and self._config.state_filename is not None:
       self._saver.restore(self._session, self._config.state_filename)
 
