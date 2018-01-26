@@ -184,7 +184,8 @@ class Step(object):
 
     # Create a saver.
     self._saver = tf.train.Saver(tf.global_variables())
-    if restore_if_available and self._config.state_filename is not None:
+    if restore_if_available and (
+      self._config.state_filename is not None and os.path.exists(self._config.state_filename)):
       self._saver.restore(self._session, self._config.state_filename)
 
     # Build the summary operation from the last tower summaries.
