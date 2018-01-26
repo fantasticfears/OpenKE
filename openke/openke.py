@@ -154,8 +154,8 @@ class Step(object):
             # Retain the summaries from the final tower.
             summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-            grads = self._optimizer.compute_gradients(loss)
-            tower_grads.append(grads)
+            grad = self._optimizer.compute_gradients(loss)
+            tower_grads.append(grad)
 
     grads = self.average_gradients(tower_grads)
 
@@ -174,13 +174,13 @@ class Step(object):
     for var in tf.trainable_variables():
       summaries.append(tf.summary.histogram(var.op.name, var))
 
-    # Track the moving averages of all trainable variables.
-    variable_averages = tf.train.ExponentialMovingAverage(
-        MOVING_AVERAGE_DECAY, self._global_step)
-    variables_averages_op = variable_averages.apply(tf.trainable_variables())
+    # # Track the moving averages of all trainable variables.
+    # variable_averages = tf.train.ExponentialMovingAverage(
+    #     MOVING_AVERAGE_DECAY, self._global_step)
+    # variables_averages_op = variable_averages.apply(tf.trainable_variables())
 
     # Group all updates to into a single train op.
-    train_op = tf.group(apply_gradient_op, variables_averages_op)
+    # train_op = tf.group(apply_gradient_op, variables_averages_op)
 
     # Create a saver.
     self._saver = tf.train.Saver(tf.global_variables())
@@ -203,7 +203,7 @@ class Step(object):
 
     for step in range(self._config.options['train_iterations']):
       start_time = time.time()
-      _, loss_value = self._session.run([train_op, loss])
+      loss_value = self._session.run(apply_gradient_op)
       duration = time.time() - start_time
 
       assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
