@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import os
 import time
-import datetime
+from datetime import *
 from functools import reduce
 
 from openke.config import TrainStep, TrainOptions
@@ -207,10 +207,10 @@ class Step(object):
       loss_value = self._session.run(apply_gradient_op)
       duration = time.time() - start_time
 
-      assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
+      # assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
       if step % 10 == 0:
-        num_examples_per_step = self._config.options['batch_size'] * self._config.num_gpus
+        num_examples_per_step = sum(self._config.options['batch_size'.values()]) * self._config.num_gpus
         examples_per_sec = num_examples_per_step / duration
         sec_per_batch = duration / self._config.num_gpus
 
