@@ -197,7 +197,7 @@ class Step(object):
     self._session.run(init)
 
     # Start the queue runners.
-    tf.train.start_queue_runners(sess=sess)
+    tf.train.start_queue_runners(sess=self._session)
 
     summary_writer = tf.summary.FileWriter(self._config.path, self._session.graph)
 
