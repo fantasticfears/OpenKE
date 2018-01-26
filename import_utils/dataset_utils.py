@@ -123,8 +123,8 @@ def convert_dataset(split_name: str,
         dataset_dir, split_name, (shard_id, num_shards), tfrecord_filename=tfrecord_filename)
 
     valid_tf_writer = tf.python_io.TFRecordWriter(output_filename)
-    ng_ent_tf_writer = [tf.python_io.TFRecordWriter(_gen_dataset_filename(dataset_dir, f"_ng_ent_{i}", (shard_id, num_shards), tfrecord_filename)) for i in range(negative_entity_rate)]
-    ng_rel_tf_writer = [tf.python_io.TFRecordWriter(_gen_dataset_filename(dataset_dir, f"_ng_rel_{i}", (shard_id, num_shards), tfrecord_filename)) for i in range(negative_relation_rate)]
+    ng_ent_tf_writer = [tf.python_io.TFRecordWriter(_gen_dataset_filename(dataset_dir, "_ng_ent_{}".format(i), (shard_id, num_shards), tfrecord_filename)) for i in range(negative_entity_rate)]
+    ng_rel_tf_writer = [tf.python_io.TFRecordWriter(_gen_dataset_filename(dataset_dir, "_ng_rel_{}".format(i), (shard_id, num_shards), tfrecord_filename)) for i in range(negative_relation_rate)]
 
     start_ndx = shard_id * num_per_shard
     end_ndx = min((shard_id+1) * num_per_shard, loc)

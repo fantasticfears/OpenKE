@@ -19,7 +19,7 @@ class TrainOptions(object):
     config = load_from_yaml(yaml_filename)
     self._name = config.get('name')
     config_dir = os.path.abspath(os.path.join(yaml_filename, '..'))
-    self._flow = [TrainStep(step, f"{self._name}_{idx}", config_dir) for idx, step in enumerate(config.get('flow', []))]
+    self._flow = [TrainStep(step, "{}_{}".format(self._name, idx), config_dir) for idx, step in enumerate(config.get('flow', []))]
 
   @property
   def flow(self):
