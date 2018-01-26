@@ -50,7 +50,9 @@ class Step(object):
   def __init__(self, config: TrainStep):
     self._config = config
     self._graph = tf.get_default_graph()
-    self._session = tf.Session(graph=self._graph)
+    config = tf.ConfigProto(allow_soft_placement=True,
+                            log_device_placement=self._config.log_device_placement)
+    self._session = tf.Session(graph=self._graph, config=config)
     self._saver = None
     self._optimizer = None
     self._model = None
@@ -141,8 +143,7 @@ class Step(object):
     with tf.variable_scope(tf.get_variable_scope()):
       for i in range(self._config.num_gpus):
         try:
-          pass
-          self._staging_area.put((prepare_batch(self._next_elements, self._session),))
+          self._staging_area.put((prepare_batch(self._next_elements, self._session))
         except tf.errors.OutOfRangeError:
           pass
         with tf.device('/gpu:%d' % i):
@@ -192,12 +193,6 @@ class Step(object):
     # Build an initialization operation to run below.
     init = tf.global_variables_initializer()
 
-    # Start running operations on the Graph. allow_soft_placement must be set to
-    # True to build towers on GPU, as some of the ops do not have GPU
-    # implementations.
-    sess = tf.Session(config=tf.ConfigProto(
-        allow_soft_placement=True,
-        log_device_placement=self._config.log_device_placement))
     self._session.run(init)
 
     # Start the queue runners.
