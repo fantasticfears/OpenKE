@@ -142,21 +142,21 @@ class Step(object):
 
     tower_grads = []
     with tf.variable_scope(tf.get_variable_scope()):
-      for i in range(self._config.num_gpus):
-        with tf.device('/gpu:%d' % i):
-          with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
-            # try:
-            #   self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
-            # except tf.errors.OutOfRangeError as e:
-            #   print("all dataset exhausted:", e)
-            loss = self._model.loss(scope, prepare_batch(self._next_elements, self._session), self._model_variables, self._config.options)
+      # for i in range(self._config.num_gpus):
+      #   with tf.device('/gpu:%d' % i):
+      with tf.name_scope('%s_%d' % (self._config.name, 0)) as scope:
+        # try:
+        #   self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
+        # except tf.errors.OutOfRangeError as e:
+        #   print("all dataset exhausted:", e)
+        loss = self._model.loss(scope, prepare_batch(self._next_elements, self._session), self._model_variables, self._config.options)
 
-            tf.get_variable_scope().reuse_variables()
-            # Retain the summaries from the final tower.
-            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+        tf.get_variable_scope().reuse_variables()
+        # Retain the summaries from the final tower.
+        summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-            grad = self._optimizer.compute_gradients(loss)
-            tower_grads.append(grad)
+        grad = self._optimizer.compute_gradients(loss)
+        tower_grads.append(grad)
 
     grads = self.average_gradients(tower_grads)
 
