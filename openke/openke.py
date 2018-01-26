@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 import os
 import time
-from datetime import *
+import datetime
 from functools import reduce
 
 from openke.config import TrainStep, TrainOptions
@@ -216,7 +216,7 @@ class Step(object):
 
         format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                       'sec/batch)')
-        print(format_str % (datetime.now(), step, loss_value,
+        print(format_str % (datetime.datetime.now(), step, loss_value,
                             examples_per_sec, sec_per_batch))
 
       if step % 100 == 0:
