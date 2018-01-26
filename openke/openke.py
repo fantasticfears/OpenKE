@@ -97,9 +97,9 @@ class Step(object):
       # warm up
       for iterator in self._iterators:
         self._session.run(iterator.initializer)
-      batch = prepare_batch(self._next_elements, self._session)
-      print(batch.dtype, self._session.run(tf.Print(batch, [batch])))
-      self._staging_area.put((batch,))
+      # batch = prepare_batch(self._next_elements, self._session)
+      # print(batch.dtype, self._session.run(tf.Print(batch, [batch])))
+      # self._staging_area.put((batch,))
 
   def average_gradients(self, tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -142,12 +142,12 @@ class Step(object):
     tower_grads = []
     with tf.variable_scope(tf.get_variable_scope()):
       for i in range(self._config.num_gpus):
-        try:
-          self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
-        except tf.errors.OutOfRangeError as e:
-          print("all dataset exhausted:", e)
         with tf.device('/gpu:%d' % i):
           with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
+            try:
+              self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
+            except tf.errors.OutOfRangeError as e:
+              print("all dataset exhausted:", e)
             loss = self._model.loss(scope, self._staging_area.get(), self._model_variables, self._config.options)
 
             tf.get_variable_scope().reuse_variables()
