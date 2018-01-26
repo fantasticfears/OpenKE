@@ -147,7 +147,7 @@ class Step(object):
               self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
             except tf.errors.OutOfRangeError as e:
               print("all dataset exhausted:", e)
-            loss = self._model.loss(scope, self._staging_area.get(), self._model_variables, self._config.options)
+            loss = self._model.loss(scope, prepare_batch(self._next_elements, self._session), self._model_variables, self._config.options)
 
             tf.get_variable_scope().reuse_variables()
             # Retain the summaries from the final tower.
