@@ -49,10 +49,9 @@ class Step(object):
 
   def __init__(self, config: TrainStep):
     self._config = config
-    self._graph = tf.get_default_graph()
     config = tf.ConfigProto(allow_soft_placement=True,
                             log_device_placement=self._config.log_device_placement)
-    self._session = tf.Session(graph=self._graph, config=config)
+    self._session = tf.Session(config=config)
     self._saver = None
     self._optimizer = None
     self._model = None
