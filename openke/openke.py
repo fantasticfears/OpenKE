@@ -210,7 +210,7 @@ class Step(object):
       # assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
 
       if step % 10 == 0:
-        num_examples_per_step = sum(self._config.options['batch_size'.values()]) * self._config.num_gpus
+        num_examples_per_step = sum(self._config.options['batch_size'].values()) * self._config.num_gpus
         examples_per_sec = num_examples_per_step / duration
         sec_per_batch = duration / self._config.num_gpus
 
