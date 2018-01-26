@@ -68,7 +68,7 @@ class Step(object):
     """gets the train config."""
     return self._config
 
-  def initialize(self, restore_if_available=True):
+  def initialize(self):
     """setup the model and configurations."""
     with self._session.as_default():
       initializer = tf.contrib.layers.xavier_initializer(uniform=False)
@@ -136,7 +136,7 @@ class Step(object):
       average_grads.append(grad_and_var)
     return average_grads
 
-  def run(self):
+  def run(self, restore_if_available=True):
     """train next batch."""
 
     tower_grads = []
