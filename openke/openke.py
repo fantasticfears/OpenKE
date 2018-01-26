@@ -42,7 +42,9 @@ def build_optimizer(optimizer, options):
 def prepare_batch(next_elements, session):
   el = [tf.transpose(n, perm=[1, 0]) for n in next_elements]
   el = reduce(lambda x,y: x+y, el)
-  return tf.convert_to_tensor(session.run(el))
+  tensor = tf.convert_to_tensor(session.run(el))
+  print(session.Print(tensor, [tensor]))
+  return tensor
 
 class Step(object):
   """A class takes a train config and execute a run."""
