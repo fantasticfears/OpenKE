@@ -3,11 +3,12 @@ model_options:
     embedding_size:
       entity: 100
       relation: 100
+      hidden: 50
     train_iterations: 1000
     batch_size:
       positive: 256
       negative_entities: 256
-      negative_relaiton: 256
+      negative_relation: 0
     margin: 1.0
     alpha: 0.001
     lambda: 0.000
@@ -22,8 +23,9 @@ flow:
     dataset_filenames:
       train:
         - "valid2id_train_00000-of-00001.tfrecord"
-      negative_train:
+      negative_entities:
         - "valid2id__ng_ent_0_00000-of-00001.tfrecord"
+      negative_relations: null
     log_device_placement: True
     num_gpus: 2
     optimizer: SGD

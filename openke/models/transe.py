@@ -21,7 +21,7 @@ def loss(scope, train_data, variables, options):
   #To get positive triples and negative triples for training
   #The shapes of pos_h, pos_t, pos_r are (batch_size, 1)
   #The shapes of neg_h, neg_t, neg_r are (batch_size, negative_ent + negative_rel)
-  pos_h, pos_r, pos_t, neg_h, neg_r, neg_t = openke.models.unload_tensors(train_data)
+  pos_h, pos_r, pos_t, neg_h, neg_r, neg_t = openke.models.unload_tensors(train_data, options)
   #Embedding entities and relations of triples, e.g. p_h, p_t and p_r are embeddings for positive triples
   p_h = tf.nn.embedding_lookup(variables['ent_embeddings'], pos_h)
   p_t = tf.nn.embedding_lookup(variables['ent_embeddings'], pos_t)

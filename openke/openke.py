@@ -3,11 +3,19 @@ import tensorflow as tf
 import os
 import time
 import datetime
+from functools import reduce
 
 from openke.config import TrainStep, TrainOptions
 import openke.models
 
 MOVING_AVERAGE_DECAY = 0.9999
+
+def _parse_function(example_proto):
+  features = {"h": tf.FixedLenFeature((), tf.int64),
+              "r": tf.FixedLenFeature((), tf.int64),
+              "t": tf.FixedLenFeature((), tf.int64)}
+  parsed_features = tf.parse_single_example(example_proto, features)
+  return parsed_features["h"], parsed_features["r"], parsed_features["t"]
 
 def build_model(model, options):
   """build model by config."""
@@ -31,6 +39,11 @@ def build_optimizer(optimizer, options):
   else:
     return tf.train.GradientDescentOptimizer(options['alpha'])
 
+def prepare_batch(next_elements, session):
+  el = [tf.transpose(n, perm=[1, 0]) for n in next_elements]
+  el = reduce(lambda x,y: x+y, el)
+  return tf.convert_to_tensor(session.run(el))
+
 class Step(object):
   """A class takes a train config and execute a run."""
 
@@ -38,13 +51,13 @@ class Step(object):
     self._config = config
     self._graph = tf.get_default_graph()
     self._session = tf.Session(graph=self._graph)
-    self._saver = tf.train.Saver()
+    self._saver = None
     self._optimizer = None
     self._model = None
-    self._dataset = None
-    self._iterator = None
-    self._next_element = None
-    self._stage_area = None
+    self._datasets = None
+    self._iterators = None
+    self._next_elements = None
+    self._staging_area = None
     self._global_step = None
     self._model_variables = None
 
@@ -63,22 +76,28 @@ class Step(object):
 
       self._model_variables = self._model.init_variables(self._config.options)
       self._global_step = tf.Variable(0, name="global_step", trainable=False)
-      self._session.run(tf.initialize_all_variables())
+      self._session.run(tf.global_variables_initializer())
 
-      if restore_if_available and self._config.state_filename is not None:
-        self._saver.restore(self._session, self._config.state_filename)
+      batch_size = self._config.options['batch_size']
+      datasets = [tf.data.TFRecordDataset(self._config.dataset_filenames['train']).map(_parse_function).batch(batch_size['positive'])]
+      if batch_size['negative_entities'] > 0:
+        datasets.append(tf.data.TFRecordDataset(self._config.dataset_filenames['negative_entities']).map(_parse_function).batch(batch_size['negative_entities']))
+      if batch_size['negative_relation'] > 0:
+        datasets.append(tf.data.TFRecordDataset(self._config.dataset_filenames['negative_relation']).map(_parse_function).batch(batch_size['negative_relation']))
+      self._datasets = [d.repeat(self._config.options['train_iterations']) for d in datasets]
 
-      filenames = (self._config.dataset_filenames['train'],
-                   self._config.dataset_filenames['negative_train'])
-      self._dataset = tf.data.TFRecordDataset.zip(filenames)
-      self._dataset = self._dataset.batch(self._config.options['batch_size'])
-      self._dataset = self._dataset.repeat(self._config.options['train_iterations'])
-      self._iterator = self._dataset.make_initializable_iterator()
-      self._next_element = self._iterator.get_next()
-      self._stage_area = tf.contrib.staging.StagingArea()
+      # Creates a dataset that reads all of the examples from two files, and extracts
+      # the image and label features.
+      self._iterators = [d.make_initializable_iterator() for d in self._datasets]
+      self._next_elements = [i.get_next() for i in self._iterators]
+      self._staging_area = tf.contrib.staging.StagingArea(dtypes=[tf.int64])
 
       # warm up
-      self._stage_area.put(self._session.run(self._next_element))
+      for iterator in self._iterators:
+        self._session.run(iterator.initializer)
+      batch = prepare_batch(self._next_elements, self._session)
+      print(batch.dtype, self._session.run(tf.Print(batch, [batch])))
+      self._staging_area.put((batch,))
 
   def average_gradients(self, tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -122,12 +141,13 @@ class Step(object):
     with tf.variable_scope(tf.get_variable_scope()):
       for i in range(self._config.num_gpus):
         try:
-          self._stage_area.put(self._session.run(self._next_element))
+          pass
+          self._staging_area.put((prepare_batch(self._next_elements, self._session),))
         except tf.errors.OutOfRangeError:
           pass
         with tf.device('/gpu:%d' % i):
           with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
-            loss = self._model.loss(scope, self._stage_area.get(), self._model_variables, self._config.options)
+            loss = self._model.loss(scope, self._staging_area.get(), self._model_variables, self._config.options)
 
             tf.get_variable_scope().reuse_variables()
             # Retain the summaries from the final tower.
@@ -162,7 +182,9 @@ class Step(object):
     train_op = tf.group(apply_gradient_op, variables_averages_op)
 
     # Create a saver.
-    self._saver = tf.train.Saver(tf.global_variables())
+    self._saver = tf.Train.Saver(tf.global_variables())
+    if restore_if_available and self._config.state_filename is not None:
+      self._saver.restore(self._session, self._config.state_filename)
 
     # Build the summary operation from the last tower summaries.
     summary_op = tf.summary.merge(summaries)

@@ -48,6 +48,10 @@ class TrainStep(object):
     self._optimizer = step.get('optimizer')
 
   @property
+  def name(self):
+    return self._name
+
+  @property
   def optimizer(self):
     """gets the optimizer."""
     return self._optimizer
