@@ -143,10 +143,10 @@ class Step(object):
       for i in range(self._config.num_gpus):
         with tf.device('/gpu:%d' % i):
           with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
-            try:
-              self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
-            except tf.errors.OutOfRangeError as e:
-              print("all dataset exhausted:", e)
+            # try:
+            #   self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
+            # except tf.errors.OutOfRangeError as e:
+            #   print("all dataset exhausted:", e)
             loss = self._model.loss(scope, prepare_batch(self._next_elements, self._session), self._model_variables, self._config.options)
 
             tf.get_variable_scope().reuse_variables()
@@ -200,7 +200,7 @@ class Step(object):
 
     summary_writer = tf.summary.FileWriter(self._config.path, self._session.graph)
 
-    for step in range(self._config.options['train_iterations']):
+    for step in range(self._config.options['train_iterations'] * 100):
       start_time = time.time()
       loss_value = self._session.run(apply_gradient_op)
       duration = time.time() - start_time
