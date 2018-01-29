@@ -43,7 +43,7 @@ def prepare_batch(next_elements, session):
   el = [tf.transpose(n, perm=[1, 0]) for n in next_elements]
   # el = reduce(lambda x,y: x+y, el)
   # tensor = tf.convert_to_tensor(session.run(el))
-  # print(session.run(tf.Print(tensor, [tensor])))
+  print(session.run(tf.Print(el, [el])))
   return el
 
 class Step(object):
@@ -98,9 +98,9 @@ class Step(object):
       # warm up
       for iterator in self._iterators:
         self._session.run(iterator.initializer)
-      # batch = prepare_batch(self._next_elements, self._session)
+      batch = prepare_batch(self._next_elements, self._session)
       # print(batch.dtype, self._session.run(tf.Print(batch, [batch])))
-      # self._staging_area.put((batch,))
+      self._staging_area.put((batch,))
 
   def average_gradients(self, tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -142,21 +142,21 @@ class Step(object):
 
     tower_grads = []
     with tf.variable_scope(tf.get_variable_scope()):
-      # for i in range(self._config.num_gpus):
-      #   with tf.device('/gpu:%d' % i):
-      with tf.name_scope('%s_%d' % (self._config.name, 0)) as scope:
-        # try:
-        #   self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
-        # except tf.errors.OutOfRangeError as e:
-        #   print("all dataset exhausted:", e)
-        loss = self._model.loss(scope, prepare_batch(self._next_elements, self._session), self._model_variables, self._config.options)
+      for i in range(self._config.num_gpus):
+        with tf.device('/gpu:%d' % i):
+          with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
+            try:
+              self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
+            except tf.errors.OutOfRangeError as e:
+              print("all dataset exhausted:", e)
+            loss = self._model.loss(scope, self._staging_area.get(), self._model_variables, self._config.options)
 
-        tf.get_variable_scope().reuse_variables()
-        # Retain the summaries from the final tower.
-        summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+            tf.get_variable_scope().reuse_variables()
+            # Retain the summaries from the final tower.
+            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-        grad = self._optimizer.compute_gradients(loss)
-        tower_grads.append(grad)
+            grad = self._optimizer.compute_gradients(loss)
+            tower_grads.append(grad)
 
     grads = self.average_gradients(tower_grads)
 
@@ -202,7 +202,7 @@ class Step(object):
 
     summary_writer = tf.summary.FileWriter(self._config.path, self._session.graph)
 
-    for step in range(self._config.options['train_iterations'] * 100):
+    for step in range(self._config.options['train_iterations']):
       start_time = time.time()
       loss_value = self._session.run(apply_gradient_op)
       duration = time.time() - start_time
