@@ -4,16 +4,16 @@ import tensorflow as tf
 
 
 def unload_tensors(data, options):
-  positive_data = tf.slice(
-      data, [0, 0], [options['batch_size']['positive'], 3])
-  # positive_data = data[0]
+  # positive_data = tf.slice(
+  #     data, [0, 0], [options['batch_size']['positive'], 3])
+  positive_data = data[0]
   pos_h, pos_r, pos_t = tf.split(tf.transpose(
       positive_data, [1, 0]), num_or_size_splits=3, axis=0)
-  # negative_data = data[1]
-  negative_data = tf.slice(data,
-                           [options['batch_size']['positive'], 0],
-                           [options['batch_size']['negative_entities'] +
-                               options['batch_size']['negative_relation'], 3])
+  negative_data = data[1]
+  # negative_data = tf.slice(data,
+  #                          [options['batch_size']['positive'], 0],
+  #                          [options['batch_size']['negative_entities'] +
+  #                              options['batch_size']['negative_relation'], 3])
   neg_h, neg_r, neg_t = tf.split(tf.transpose(
       negative_data, [1, 0]), num_or_size_splits=3, axis=0)
   return pos_h, pos_r, pos_t, neg_h, neg_r, neg_t
