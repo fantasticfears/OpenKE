@@ -41,10 +41,10 @@ def build_optimizer(optimizer, options):
 
 def prepare_batch(next_elements, session):
   el = [tf.transpose(n, perm=[1, 0]) for n in next_elements]
-  # el = reduce(lambda x,y: x+y, el)
-  # tensor = tf.convert_to_tensor(session.run(el))
-  print(session.run(tf.Print(el, [el])))
-  return el
+  el = reduce(lambda x,y: x+y, el)
+  tensor = tf.convert_to_tensor(el)
+  # print(session.run(tf.Print(el, [el])))
+  return tensor
 
 class Step(object):
   """A class takes a train config and execute a run."""
@@ -79,7 +79,7 @@ class Step(object):
 
       self._model_variables = self._model.init_variables(self._config.options)
       self._global_step = tf.Variable(0, name="global_step", trainable=False)
-      self._session.run(tf.global_variables_initializer())
+      # self._session.run(tf.global_variables_initializer())
 
       batch_size = self._config.options['batch_size']
       datasets = [tf.data.TFRecordDataset(self._config.dataset_filenames['train']).map(_parse_function).batch(batch_size['positive'])]
@@ -98,9 +98,9 @@ class Step(object):
       # warm up
       for iterator in self._iterators:
         self._session.run(iterator.initializer)
-      batch = prepare_batch(self._next_elements, self._session)
+      # batch = prepare_batch(self._next_elements, self._session)
       # print(batch.dtype, self._session.run(tf.Print(batch, [batch])))
-      self._staging_area.put((batch,))
+      # self._staging_area.put((batch,))
 
   def average_gradients(self, tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -141,12 +141,13 @@ class Step(object):
     """train next batch."""
 
     tower_grads = []
+    feed_data = []
     with tf.variable_scope(tf.get_variable_scope()):
       for i in range(self._config.num_gpus):
         with tf.device('/gpu:%d' % i):
           with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
             try:
-              self._staging_area.put((prepare_batch(self._next_elements, self._session), ))
+              feed_data.append(self._staging_area.put((prepare_batch(self._next_elements, self._session), )))
             except tf.errors.OutOfRangeError as e:
               print("all dataset exhausted:", e)
             loss = self._model.loss(scope, self._staging_area.get(), self._model_variables, self._config.options)
@@ -204,7 +205,7 @@ class Step(object):
 
     for step in range(self._config.options['train_iterations']):
       start_time = time.time()
-      loss_value = self._session.run(apply_gradient_op)
+      _, loss_value = self._session.run([feed_data, apply_gradient_op])
       duration = time.time() - start_time
 
       # assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
