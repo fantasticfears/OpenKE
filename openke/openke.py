@@ -40,7 +40,7 @@ def build_optimizer(optimizer, options):
     return tf.train.GradientDescentOptimizer(options['alpha'])
 
 def prepare_batch(next_elements, session):
-  el = [tf.transpose(n, perm=[1, 0]) for n in next_elements]
+  el = (tf.transpose(n, perm=[1, 0]) for n in next_elements)
   # el = reduce(lambda x,y: x+y, el)
   # tensor = tf.convert_to_tensor(el)
   # print(session.run(tf.Print(el, [el])))
@@ -147,7 +147,7 @@ class Step(object):
         with tf.device('/gpu:%d' % i):
           with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
             try:
-              feed_data.append(self._staging_area.put((prepare_batch(self._next_elements, self._session), )))
+              feed_data.append(self._staging_area.put(prepare_batch(self._next_elements, self._session)))
             except tf.errors.OutOfRangeError as e:
               print("all dataset exhausted:", e)
             loss = self._model.loss(scope, self._staging_area.get(), self._model_variables, self._config.options)
