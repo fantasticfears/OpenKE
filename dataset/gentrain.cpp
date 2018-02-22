@@ -156,7 +156,19 @@ build_triplet_list(long long h, long long r, long long t, double y)
 }
 
 static PyObject *
-gentrain_yield_triplets(PyObject *self, PyObject *args)
+gentrain_yield_triplet(PyObject *self, PyObject *args)
+{
+	int id = 0;
+    if (!PyArg_ParseTuple(args, "")) {
+		return NULL;
+	}
+	int i = rand_max(0, num_entities);
+
+	return build_triplet_list(trainList[i].h, trainList[i].r, trainList[i].t, 1);
+}
+
+static PyObject *
+gentrain_yield_neg_triplets(PyObject *self, PyObject *args)
 {
 	int id = 0;
 	int negRate;
@@ -168,9 +180,6 @@ gentrain_yield_triplets(PyObject *self, PyObject *args)
 	int i = rand_max(0, num_entities);
 	PyObject* list = PyList_New(0);
 	if (list == NULL) {
-		return NULL;
-	}
-	if (PyList_Append(list, build_triplet_list(trainList[i].h, trainList[i].r, trainList[i].t, 1)) == -1) {
 		return NULL;
 	}
 
@@ -196,7 +205,6 @@ gentrain_yield_triplets(PyObject *self, PyObject *args)
 	}
 	return list;
 }
-
 
 static PyObject *
 gentrain_release(PyObject *self, PyObject *args)
@@ -225,8 +233,10 @@ static PyMethodDef GentrainMethods[] = {
      "Takes a few parameters from Python."},
 	{"freq",  gentrain_freq, METH_VARARGS,
 	 "Calculate the frequence."},
-	{"yield_triplets", gentrain_yield_triplets, METH_VARARGS,
-	 "Yield triplets based on paramters."},
+	{"yield_triplet", gentrain_yield_triplet, METH_VARARGS,
+	 "Yield triplet based on paramters."},
+	{"yield_neg_triplets", gentrain_yield_neg_triplets, METH_VARARGS,
+	 "Yield negative triplets based on paramters."},
 	{"release", gentrain_release, METH_VARARGS,
 	 "Free resouces."},
     {NULL, NULL, 0, NULL}        /* Sentinel */

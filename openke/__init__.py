@@ -1,3 +1,3 @@
 from openke.openke import *
 
-__all__ = ['openke']
+__all__ = ['openke', 'datasetutils']

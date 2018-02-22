@@ -1,6 +1,9 @@
 """Imports data to TFRecord, like FB15K."""
 
-from dataset_utils import dataset_exists, convert_dataset, write_mapping_file
+import sys
+sys.path.append("..")
+
+from openke.datasetutils import convert_dataset, write_mapping_file
 from typing import Tuple, List
 import tensorflow as tf
 import os.path
@@ -10,7 +13,7 @@ flags = tf.flags
 flags.DEFINE_string('dataset_dir', None, 'String: Your dataset directory')
 flags.DEFINE_string('dataset_file', None, 'String: Your dataset file')
 flags.DEFINE_string('split_name', 'train', '`train` or `validation`')
-flags.DEFINE_integer('num_shards', 1, 'Int: Number of shards to split the TFRecord files')
+flags.DEFINE_integer('batch_size', 512, 'Int: Number of triplets in a batch')
 flags.DEFINE_string('tfrecord_filename', None, 'String: The output filename to name your TFRecord file')
 
 FLAGS = flags.FLAGS
@@ -37,12 +40,6 @@ def main():
   if not FLAGS.dataset_dir:
     raise ValueError('dataset_dir is empty. Please state a dataset_dir argument.')
 
-  if dataset_exists(dataset_dir=FLAGS.dataset_dir,
-                    num_shards=FLAGS.num_shards,
-                    output_filename=FLAGS.tfrecord_filename):
-    print('Dataset files already exist. Exiting without re-creating them.')
-    return None
-
   entities, relations, loc = _get_entities_and_relations_from_tsv(FLAGS.dataset_dir, FLAGS.dataset_file)
 
   entities_to_ids = dict(zip(entities, range(len(entities))))
@@ -50,10 +47,15 @@ def main():
 
   with open(os.path.join(FLAGS.dataset_dir, FLAGS.dataset_file), 'r') as f:
     reader = csv.reader(f, delimiter='\t')
-    convert_dataset(FLAGS.split_name, loc,
-                    reader, 1, 1, True,
-                    entities_to_ids, relations_to_ids,
-                    FLAGS.dataset_dir, FLAGS.tfrecord_filename, FLAGS.num_shards)
+    convert_dataset(loc,
+                    FLAGS.batch_size,
+                    reader,
+                    entities_to_ids,
+                    relations_to_ids,
+                    FLAGS.dataset_dir,
+                    negative_relation_rate=1,
+                    negative_entity_rate=1,
+                    bern=True)
 
   write_mapping_file(entities_to_ids, 'train2id.txt', FLAGS.dataset_dir)
   write_mapping_file(relations_to_ids, 'relation2id.txt', FLAGS.dataset_dir)
