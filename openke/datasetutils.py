@@ -70,29 +70,15 @@ def convert_dataset(num_triplets: int,
 
   sys.stdout.write('\r>> Proceeding to generate positive triplets')
   sys.stdout.flush()
-  with tf.python_io.TFRecordWriter("positive_triplets.tfrecord") as writer:
-    for shard in range(read_triplet // batch_size + 1):
+  with tf.python_io.TFRecordWriter("train_triplets.tfrecord") as writer:
+    max_shard = read_triplet // batch_size + 1
+    for shard in range(max_shard):
       triplets = []
-      for i in range(batch_size):
-        sys.stdout.write('\r>> Writing triplet %d/%d shard %d' % (
-            i+1, batch_size, shard))
+      for _ in range(batch_size):
+        sys.stdout.write('\r>> Writing triplet shard %d/%d' % (
+            shard, max_shard))
 
-        triplets.append(gentrain.yield_triplet())
-
-      ex = triplets_to_tf_example(triplets)
-      writer.write(ex.SerializeToString())
-
-  sys.stdout.write('\r>> Proceeding to generate negative triplets')
-  sys.stdout.flush()
-  with tf.python_io.TFRecordWriter("negative_triplets.tfrecord") as writer:
-    for shard in range(read_triplet // batch_size + 1):
-      triplets = []
-      for i in range(batch_size):
-        sys.stdout.write('\r>> Writing triplet %d/%d shard %d' % (
-            i+1, batch_size, shard))
-
-        for t in gentrain.yield_neg_triplets(negative_entity_rate, negative_relation_rate, bern):
-          triplets.append(t)
+        triplets.append(gentrain.yield_triplets(negative_relation_rate, negative_entity_rate, bern))
 
       ex = triplets_to_tf_example(triplets)
       writer.write(ex.SerializeToString())
@@ -100,22 +86,30 @@ def convert_dataset(num_triplets: int,
   sys.stdout.write('\n')
   sys.stdout.flush()
 
-def triplets_to_tf_example(triplets):
+def triplets_to_tf_example(batch):
   ex = tf.train.SequenceExample()
   # context for sequence example
-  triplets_length = len(triplets)
+  triplets_length = len(batch) * len(batch[0])
   ex.context.feature["length"].int64_list.value.append(triplets_length)
 
   # Feature lists for sequential features of our example
   head_tokens = ex.feature_lists.feature_list["heads"]
   relation_tokens = ex.feature_lists.feature_list["relations"]
   tail_tokens = ex.feature_lists.feature_list["tails"]
+  neg_head_tokens = ex.feature_lists.feature_list["negative_heads"]
+  neg_relation_tokens = ex.feature_lists.feature_list["negative_relations"]
+  neg_tail_tokens = ex.feature_lists.feature_list["negative_tails"]
 
-  for triplet in triplets:
-    h, r, t, _ = triplet
-    head_tokens.feature.add().int64_list.value.append(h)
-    relation_tokens.feature.add().int64_list.value.append(r)
-    tail_tokens.feature.add().int64_list.value.append(t)
+  for triplets in batch:
+    for h, r, t, neg_flag in triplets:
+      if neg_flag > 0:
+        head_tokens.feature.add().int64_list.value.append(h)
+        relation_tokens.feature.add().int64_list.value.append(r)
+        tail_tokens.feature.add().int64_list.value.append(t)
+      else:
+        neg_head_tokens.feature.add().int64_list.value.append(h)
+        neg_relation_tokens.feature.add().int64_list.value.append(r)
+        neg_tail_tokens.feature.add().int64_list.value.append(t)
 
   return ex
 
@@ -131,7 +125,10 @@ def parse_triplets_from_sequence_example(ex):
   sequence_features = {
     "heads": tf.FixedLenSequenceFeature([], dtype=tf.int64),
     "relations": tf.FixedLenSequenceFeature([], dtype=tf.int64),
-    "tails": tf.FixedLenSequenceFeature([], dtype=tf.int64)
+    "tails": tf.FixedLenSequenceFeature([], dtype=tf.int64),
+    "negative_heads": tf.FixedLenSequenceFeature([], dtype=tf.int64),
+    "negative_relations": tf.FixedLenSequenceFeature([], dtype=tf.int64),
+    "negative_tails": tf.FixedLenSequenceFeature([], dtype=tf.int64)
   }
 
   # Parse the example (returns a dictionary of tensors)
@@ -140,6 +137,10 @@ def parse_triplets_from_sequence_example(ex):
     context_features=context_features,
     sequence_features=sequence_features
   )
-  return {"head": sequence_parsed["heads"], "relation": sequence_parsed["relations"], "tail": sequence_parsed["tails"], "length": context_parsed["length"]}
-
-
+  return (sequence_parsed["heads"],
+      sequence_parsed["relations"],
+      sequence_parsed["tails"],
+      sequence_parsed["negative_heads"],
+      sequence_parsed["negative_relations"],
+      sequence_parsed["negative_tails"]
+  )

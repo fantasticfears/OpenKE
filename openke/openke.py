@@ -4,6 +4,7 @@ import os
 import time
 import datetime
 from functools import reduce
+from openke.datasetutils import parse_triplets_from_sequence_example
 
 from openke.config import TrainStep, TrainOptions
 import openke.models
@@ -39,12 +40,15 @@ def build_optimizer(optimizer, options):
   else:
     return tf.train.GradientDescentOptimizer(options['alpha'])
 
-def prepare_batch(next_elements, session):
-  el = [tf.transpose(n, perm=[1, 0]) for n in next_elements]
+def prepare_batch(next_element):
+  # el = [ for n in next_elements]
   # el = reduce(lambda x,y: x+y, el)
-  # tensor = tf.convert_to_tensor(el)
-  # print(session.run(tf.Print(el, [el])))
-  return el
+  # print(next_element[0].shape)
+  tensors = []
+  for element in next_element:
+    tensors.append(tf.convert_to_tensor(element[0]))
+  # print(session.run(tf.Print(tensors, [tensors])))
+  return tensors
 
 class Step(object):
   """A class takes a train config and execute a run."""
@@ -57,9 +61,9 @@ class Step(object):
     self._saver = None
     self._optimizer = None
     self._model = None
-    self._datasets = None
-    self._iterators = None
-    self._next_elements = None
+    self._dataset = None
+    self._iterator = None
+    self._next_element = None
     self._staging_area = None
     self._global_step = None
     self._model_variables = None
@@ -81,23 +85,25 @@ class Step(object):
       self._global_step = tf.Variable(0, name="global_step", trainable=False)
       # self._session.run(tf.global_variables_initializer())
 
-      batch_size = self._config.options['batch_size']
-      datasets = [tf.data.TFRecordDataset(self._config.dataset_filenames['train']).map(_parse_function).batch(batch_size['positive'])]
-      if batch_size['negative_entities'] > 0:
-        datasets.append(tf.data.TFRecordDataset(self._config.dataset_filenames['negative_entities']).map(_parse_function).batch(batch_size['negative_entities']))
-      if batch_size['negative_relation'] > 0:
-        datasets.append(tf.data.TFRecordDataset(self._config.dataset_filenames['negative_relation']).map(_parse_function).batch(batch_size['negative_relation']))
-      self._datasets = [d.repeat(self._config.options['train_iterations']) for d in datasets]
+      train_iterations = self._config.options['train_iterations']
+      self._dataset = tf.data.TFRecordDataset(self._config.dataset_filename)
+      self._dataset = self._dataset.map(parse_triplets_from_sequence_example)
+      self._dataset = self._dataset.padded_batch(1, padded_shapes=(
+        tf.TensorShape([None]),
+        tf.TensorShape([None]),
+        tf.TensorShape([None]),
+        tf.TensorShape([None]),
+        tf.TensorShape([None]),
+        tf.TensorShape([None])
+      ))
+      self._dataset = self._dataset.repeat(train_iterations)
 
-      # Creates a dataset that reads all of the examples from two files, and extracts
-      # the image and label features.
-      self._iterators = [d.make_initializable_iterator() for d in self._datasets]
-      self._next_elements = [i.get_next() for i in self._iterators]
-      self._staging_area = tf.contrib.staging.StagingArea(dtypes=[tf.int64])
+      self._iterator = self._dataset.make_initializable_iterator()
+      self._next_element = self._iterator.get_next()
+      self._staging_area = tf.contrib.staging.StagingArea(dtypes=[tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64])
 
       # warm up
-      for iterator in self._iterators:
-        self._session.run(iterator.initializer)
+      self._session.run(self._iterator.initializer)
       # batch = prepare_batch(self._next_elements, self._session)
       # print(batch.dtype, self._session.run(tf.Print(batch, [batch])))
       # self._staging_area.put((batch,))
@@ -137,32 +143,29 @@ class Step(object):
       average_grads.append(grad_and_var)
     return average_grads
 
+  def save_progress(self, step):
+    checkpoint_path = os.path.join(self._config.path, self._config.state_filename)
+    self._saver.save(self._session, checkpoint_path, global_step=step)
+
   def run(self, restore_if_available=True):
     """train next batch."""
 
     tower_grads = []
-    feed_data = []
     with tf.variable_scope(tf.get_variable_scope()):
-      for i in range(self._config.num_gpus):
-        with tf.device('/gpu:%d' % i):
-          with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
-            try:
-              feed_data.append(self._staging_area.put((prepare_batch(self._next_elements, self._session), )))
-            except tf.errors.OutOfRangeError as e:
-              print("all dataset exhausted:", e)
-            loss = self._model.loss(scope, self._staging_area.get(), self._model_variables, self._config.options)
+      # for i in range(self._config.num_gpus):
+        # with tf.device('/gpu:%d' % i):
+      with tf.name_scope('%s_%d' % (self._config.name, 0)) as scope:
+        # batch_data = prepare_batch(self._next_element)
+        loss = self._model.loss(scope, self._next_element, self._model_variables, self._config.options, self._session)
 
-            tf.get_variable_scope().reuse_variables()
-            # Retain the summaries from the final tower.
-            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+        tf.get_variable_scope().reuse_variables()
+        # Retain the summaries from the final tower.
+        summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-            grad = self._optimizer.compute_gradients(loss)
-            tower_grads.append(grad)
+        grad = self._optimizer.compute_gradients(loss)
+        tower_grads.append(grad)
 
     grads = self.average_gradients(tower_grads)
-
-    # Add a summary to track the learning rate.
-    summaries.append(tf.summary.scalar('learning_rate', grads))
 
     # Add histograms for gradients.
     for grad, var in grads:
@@ -171,6 +174,7 @@ class Step(object):
 
     # Apply the gradients to adjust the shared variables.
     apply_gradient_op = self._optimizer.apply_gradients(grads, global_step=self._global_step)
+    summaries.append(tf.summary.scalar('global_step', self._global_step))
 
     # Add histograms for trainable variables.
     for var in tf.trainable_variables():
@@ -195,7 +199,6 @@ class Step(object):
 
     # Build an initialization operation to run below.
     init = tf.global_variables_initializer()
-
     self._session.run(init)
 
     # Start the queue runners.
@@ -203,31 +206,37 @@ class Step(object):
 
     summary_writer = tf.summary.FileWriter(self._config.path, self._session.graph)
 
-    for step in range(self._config.options['train_iterations']):
+    step = 0
+    while True:
+      step += 1
+
       start_time = time.time()
-      _, loss_value = self._session.run([feed_data, apply_gradient_op])
+
+      try:
+        self._session.run([apply_gradient_op])
+      except tf.errors.OutOfRangeError as e:
+        self.save_progress(step)
+        return
+
       duration = time.time() - start_time
 
-      # assert not np.isnan(loss_value), 'Model diverged with loss = NaN'
-
       if step % 10 == 0:
-        num_examples_per_step = sum(self._config.options['batch_size'].values()) * self._config.num_gpus
+        num_examples_per_step = 512
         examples_per_sec = num_examples_per_step / duration
-        sec_per_batch = duration / self._config.num_gpus
+        sec_per_batch = duration / 1 #self._config.num_gpus
 
-        # format_str = ('%s: step %d, loss = {} (%.1f examples/sec; %.3f '
-        #               'sec/batch)')
-        print(datetime.datetime.now(), step, loss_value,
-                            examples_per_sec, sec_per_batch)
+        format_str = ('%s: step %d (%.1f examples/sec; %.3f '
+                      'sec/batch)')
+        print(format_str % (datetime.datetime.now(), step,
+                            examples_per_sec, sec_per_batch))
 
       if step % 100 == 0:
         summary_str = self._session.run(summary_op)
         summary_writer.add_summary(summary_str, step)
 
       # Save the model checkpoint periodically.
-      if step % 1000 == 0 or (step + 1) == self._config.options['train_iterations']:
-        checkpoint_path = os.path.join(self._config.path, self._config.state_filename)
-        self._saver.save(self._session, checkpoint_path, global_step=step)
+      if step % 1000 == 0:
+        self.save_progress(step)
 
 class TrainFlow(object):
   """Stores and executes a flow of training models."""

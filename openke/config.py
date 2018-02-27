@@ -39,7 +39,7 @@ class TrainStep(object):
     self._state_filename = step.get('state_filename')
     self._model = step.get('model')
     self._log_level = step.get('log_level')
-    self._dataset_filenames = step.get('dataset_filenames')
+    self._dataset_filename = step.get('dataset_filename')
     self._options = step.get('options')
     self._name = name
     self._path = path
@@ -82,9 +82,9 @@ class TrainStep(object):
     return self._log_level
 
   @property
-  def dataset_filenames(self):
-    """gets the dataset filenames."""
-    return self._dataset_filenames
+  def dataset_filename(self):
+    """gets the dataset filename."""
+    return self._dataset_filename
 
   @property
   def log_device_placement(self):

@@ -1,8 +1,8 @@
 model_options:
   general: &general
     embedding_size:
-      entity: 100
-      relation: 100
+      entity: 100000
+      relation: 100000
       hidden: 50
     train_iterations: 1000
     margin: 1.0
@@ -16,14 +16,9 @@ flow:
   - model: TransE
     log_level: VERBOSE
     state_filename: "trans_e.ckpt"
-    dataset_filenames:
-      train:
-        - "valid2id_train_00000-of-00001.tfrecord"
-      negative_entities:
-        - "valid2id__ng_ent_0_00000-of-00001.tfrecord"
-      negative_relations: null
+    dataset_filename: "train_triplets.tfrecord"
     log_device_placement: True
-    num_gpus: 2
+    num_gpus: 0
     optimizer: SGD
     options:
       <<: *transE
