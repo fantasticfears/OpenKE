@@ -150,6 +150,7 @@ class Step(object):
   def run(self, restore_if_available=True):
     """train next batch."""
 
+    losses = []
     tower_grads = []
     with tf.variable_scope(tf.get_variable_scope()):
       # for i in range(self._config.num_gpus):
@@ -164,7 +165,9 @@ class Step(object):
 
         grad = self._optimizer.compute_gradients(loss)
         tower_grads.append(grad)
+        losses.append(loss)
 
+    total_loss_op = tf.add_n(losses)
     grads = self.average_gradients(tower_grads)
 
     # Add histograms for gradients.
@@ -207,17 +210,19 @@ class Step(object):
     summary_writer = tf.summary.FileWriter(self._config.path, self._session.graph)
 
     step = 0
+    result = 0.0
     while True:
       step += 1
 
       start_time = time.time()
 
       try:
-        self._session.run([apply_gradient_op])
+        _, loss_value = self._session.run([apply_gradient_op, total_loss_op])
       except tf.errors.OutOfRangeError as e:
         self.save_progress(step)
         return
 
+      result += loss_value
       duration = time.time() - start_time
 
       if step % 10 == 0:
@@ -225,9 +230,9 @@ class Step(object):
         examples_per_sec = num_examples_per_step / duration
         sec_per_batch = duration / 1 #self._config.num_gpus
 
-        format_str = ('%s: step %d (%.1f examples/sec; %.3f '
+        format_str = ('%s: step %d, loss = %.2f (%.1f examples/sec; %.3f '
                       'sec/batch)')
-        print(format_str % (datetime.datetime.now(), step,
+        print(format_str % (datetime.datetime.now(), step, result,
                             examples_per_sec, sec_per_batch))
 
       if step % 100 == 0:
