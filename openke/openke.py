@@ -80,8 +80,8 @@ class Step(object):
       with tf.variable_scope("model", reuse=None, initializer=initializer):
         self._model = build_model(self._config.model, self._config.options)
         self._optimizer = build_optimizer(self._config.optimizer, self._config.options)
+        self._model_variables = self._model.init_variables(self._config.options)
 
-      self._model_variables = self._model.init_variables(self._config.options)
       self._global_step = tf.Variable(0, name="global_step", trainable=False)
       # self._session.run(tf.global_variables_initializer())
 
@@ -140,6 +140,7 @@ class Step(object):
       # the Variable.
       v = grad_and_vars[0][1]
       grad_and_var = (grad, v)
+
       average_grads.append(grad_and_var)
     return average_grads
 
@@ -164,11 +165,13 @@ class Step(object):
         summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
         grad = self._optimizer.compute_gradients(loss)
+        print("-"*40, grad)
         tower_grads.append(grad)
         losses.append(loss)
 
     total_loss_op = tf.add_n(losses)
-    grads = self.average_gradients(tower_grads)
+    grads = tower_grads[0]
+    # grads = self.average_gradients(tower_grads)
 
     # Add histograms for gradients.
     for grad, var in grads:
@@ -213,6 +216,8 @@ class Step(object):
     result = 0.0
     while True:
       step += 1
+      if step % 100 == 0:
+        result = 0.0
 
       start_time = time.time()
 

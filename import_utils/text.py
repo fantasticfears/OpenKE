@@ -54,8 +54,8 @@ def main():
                     relations_to_ids,
                     FLAGS.dataset_dir,
                     negative_relation_rate=1,
-                    negative_entity_rate=1,
-                    bern=True)
+                    negative_entity_rate=0,
+                    bern=False)
 
   write_mapping_file(entities_to_ids, 'train2id.txt', FLAGS.dataset_dir)
   write_mapping_file(relations_to_ids, 'relation2id.txt', FLAGS.dataset_dir)
