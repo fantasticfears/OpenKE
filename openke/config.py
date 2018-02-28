@@ -93,3 +93,36 @@ class TrainStep(object):
   @property
   def num_gpus(self):
     return self._num_gpus
+
+class TestOptions(object):
+  """A class pertains test options."""
+
+  DEFAULT_TEST_CONFIG_FILENAME = 'test.yaml'
+
+  def __init__(self, yaml_filename: str = DEFAULT_TEST_CONFIG_FILENAME):
+    """Loads the config from a file."""
+    config = load_from_yaml(yaml_filename)
+    self._state_filename = config.get('state_filename')
+    self._model = config.get('model')
+    self._dataset_filename = config.get('dataset_filename')
+    self._options = config.get('options')
+
+  @property
+  def state_filename(self):
+    """gets the state filename."""
+    return self._state_filename
+
+  @property
+  def model(self):
+    """gets the model by name."""
+    return self._model
+
+  @property
+  def options(self):
+    """gets the model config dictionary."""
+    return self._options
+
+  @property
+  def dataset_filename(self):
+    """gets the dataset filename."""
+    return self._dataset_filename

@@ -25,7 +25,7 @@ flow:
       <<: *general
   - model: TransD
     log_level: VERBOSE
-    state_filename: "trans_d.ckpt"
+    state_filename: "trans_e.ckpt"
     dataset_filename: "train_triplets.tfrecord"
     log_device_placement: True
     num_gpus: 0

@@ -68,7 +68,7 @@ def convert_dataset(num_triplets: int,
 
   gentrain.freq()
 
-  sys.stdout.write('\r>> Proceeding to generate positive triplets')
+  sys.stdout.write('\r>> Proceeding to generate training triplets')
   sys.stdout.flush()
   with tf.python_io.TFRecordWriter("train_triplets.tfrecord") as writer:
     max_shard = read_triplet // batch_size + 1
@@ -83,8 +83,42 @@ def convert_dataset(num_triplets: int,
       ex = triplets_to_tf_example(triplets)
       writer.write(ex.SerializeToString())
 
+  sys.stdout.write('\r>> Proceeding to generate test triplets')
+  sys.stdout.flush()
+  with tf.python_io.TFRecordWriter("test_triplets.tfrecord") as writer:
+    max_shard = read_triplet // 10 // batch_size + 1
+    for shard in range(max_shard):
+      triplets = []
+      for _ in range(batch_size):
+        sys.stdout.write('\r>> Writing triplet shard %d/%d' % (
+            shard, max_shard))
+
+        triplets.append(gentrain.yield_triplets(0, 0, False))
+
+      ex = test_triplets_to_tf_example(triplets)
+      writer.write(ex.SerializeToString)
+
   sys.stdout.write('\n')
   sys.stdout.flush()
+
+def test_triplets_to_tf_example(batch):
+  ex = tf.train.SequenceExample()
+  # context for sequence example
+  triplets_length = len(batch) * len(batch[0])
+  ex.context.feature["length"].int64_list.value.append(triplets_length)
+
+  # Feature lists for sequential features of our example
+  head_tokens = ex.feature_lists.feature_list["heads"]
+  relation_tokens = ex.feature_lists.feature_list["relations"]
+  tail_tokens = ex.feature_lists.feature_list["tails"]
+
+  for triplets in batch:
+    for h, r, t, _ in triplets:
+      head_tokens.feature.add().int64_list.value.append(h)
+      relation_tokens.feature.add().int64_list.value.append(r)
+      tail_tokens.feature.add().int64_list.value.append(t)
+
+  return ex
 
 def triplets_to_tf_example(batch):
   ex = tf.train.SequenceExample()

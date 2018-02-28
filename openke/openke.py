@@ -6,19 +6,10 @@ import datetime
 from functools import reduce
 from openke.datasetutils import parse_triplets_from_sequence_example
 
-from openke.config import TrainStep, TrainOptions
+from openke.config import TrainStep, TrainOptions, TestOptions
 import openke.models
 
-MOVING_AVERAGE_DECAY = 0.9999
-
-def _parse_function(example_proto):
-  features = {"h": tf.FixedLenFeature((), tf.int64),
-              "r": tf.FixedLenFeature((), tf.int64),
-              "t": tf.FixedLenFeature((), tf.int64)}
-  parsed_features = tf.parse_single_example(example_proto, features)
-  return parsed_features["h"], parsed_features["r"], parsed_features["t"]
-
-def build_model(model, options):
+def build_model(model):
   """build model by config."""
   if model == "TransD":
     return openke.models.transd
@@ -72,18 +63,17 @@ class Step(object):
     """gets the train config."""
     return self._config
 
-  def initialize(self, restore_if_available=True):
+  def initialize(self, global_step):
     """setup the model and configurations."""
-    print("Initializing " + self._config.name)
+    print("-" * 80, "\nInitializing " + self._config.name)
     with self._session.as_default():
       initializer = tf.contrib.layers.xavier_initializer(uniform=False)
       with tf.variable_scope("model", reuse=tf.AUTO_REUSE, initializer=initializer):
-        self._model = build_model(self._config.model, self._config.options)
+        self._model = build_model(self._config.model)
         self._optimizer = build_optimizer(self._config.optimizer, self._config.options)
         self._model_variables = self._model.init_variables(self._config.options)
 
-      self._global_step = tf.Variable(0, name="global_step", trainable=False)
-      # self._session.run(tf.global_variables_initializer())
+      self._global_step = tf.Variable(global_step, name="global_step", trainable=False)
 
       train_iterations = self._config.options['train_iterations']
       self._dataset = tf.data.TFRecordDataset(self._config.dataset_filename)
@@ -100,12 +90,7 @@ class Step(object):
 
       self._iterator = self._dataset.make_initializable_iterator()
       self._next_element = self._iterator.get_next()
-      self._staging_area = tf.contrib.staging.StagingArea(dtypes=[tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64])
-
-      self._saver = tf.train.Saver(tf.global_variables())
-      if restore_if_available and (
-        self._config.state_filename is not None and os.path.exists(self._config.state_filename)):
-        self._saver.restore(self._session, self._config.state_filename)
+      # self._staging_area = tf.contrib.staging.StagingArea(dtypes=[tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64])
 
       self._session.run(self._iterator.initializer)
 
@@ -149,7 +134,7 @@ class Step(object):
     checkpoint_path = os.path.join(self._config.path, self._config.state_filename)
     self._saver.save(self._session, checkpoint_path, global_step=step)
 
-  def run(self):
+  def run(self, restore_if_available=True):
     """train next batch."""
 
     losses = []
@@ -193,6 +178,11 @@ class Step(object):
     init = tf.global_variables_initializer()
     self._session.run(init)
 
+    self._saver = tf.train.Saver(self._model_variables)
+    if restore_if_available and (
+      self._config.state_filename is not None and os.path.exists(self._config.state_filename)):
+      self._saver.restore(self._session, self._config.state_filename)
+
     # Start the queue runners.
     tf.train.start_queue_runners(sess=self._session)
 
@@ -200,6 +190,7 @@ class Step(object):
 
     step = 0
     result = 0.0
+    print("-" * 80, "\Running " + self._config.name)
     while True:
       step += 1
       if step % 100 == 0:
@@ -210,8 +201,8 @@ class Step(object):
       try:
         _, loss_value = self._session.run([apply_gradient_op, total_loss_op])
       except tf.errors.OutOfRangeError as e:
-        self.save_progress(step)
-        return
+        self.save_progress(self._global_step)
+        return tf.train.global_step(self._session, self._global_step)
 
       result += loss_value
       duration = time.time() - start_time
@@ -232,7 +223,7 @@ class Step(object):
 
       # Save the model checkpoint periodically.
       if step % 1000 == 0:
-        self.save_progress(step)
+        self.save_progress(self._global_step)
 
 class TrainFlow(object):
   """Stores and executes a flow of training models."""
@@ -243,11 +234,61 @@ class TrainFlow(object):
 
   def train(self):
     """Train model based on the flow."""
+    global_step = 0
     for step_config in self._config.flow:
       step = Step(step_config)
-      step.initialize()
-      step.run()
+      step.initialize(global_step)
+      global_step = step.run()
 
 class Reasonator(object):
   """Applies link prediction and triplet classification."""
   pass
+
+class EmbeddingsTest(object):
+  def __init__(self, config):
+    self._config = config
+    with self._session.as_default():
+      initializer = tf.contrib.layers.xavier_initializer(uniform=False)
+      with tf.variable_scope("model", reuse=False, initializer=initializer):
+        self._model = build_model(self._config.model)
+        self._model_variables = self._model.init_variables(self._config.options)
+
+      self._global_step = tf.Variable(0, name="global_step", trainable=False)
+
+      self._dataset = tf.data.TFRecordDataset(self._config.dataset_filename)
+      self._dataset = self._dataset.map(parse_triplets_from_sequence_example)
+      self._dataset = self._dataset.padded_batch(1, padded_shapes=(
+        tf.TensorShape([None]),
+        tf.TensorShape([None]),
+        tf.TensorShape([None]),
+        tf.TensorShape([None]),
+        tf.TensorShape([None]),
+        tf.TensorShape([None])
+      ))
+      self._iterator = self._dataset.make_initializable_iterator()
+      self._next_element = self._iterator.get_next()
+
+      self._session.run(self._iterator.initializer)
+
+    init = tf.global_variables_initializer()
+    self._session.run(init)
+
+    self._saver = tf.train.Saver(self._model_variables)
+    self._saver.restore()
+
+  def run(self):
+    while True:
+      predict = self._model.predict(self._next_element, self._model_variables)
+      try:
+        result = self._session.run([predict])
+      except tf.errors.OutOfRangeError as e:
+        return self._report()
+      self._add_to_stat(result)
+
+class Validator(object):
+  """Validation over test data."""
+  def __init__(self, test_options: TestOptions):
+    self._config = test_options
+
+  def test(self):
+    EmbeddingsTest(self._config).run()
