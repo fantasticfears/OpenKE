@@ -4,10 +4,11 @@ model_options:
       entity: 14952
       relation: 1346
       hidden: 50
-    train_iterations: 1000
+    train_iterations: 10
     margin: 1.0
     alpha: 0.001
     lambda: 0.000
+    batch_size: 4831
   transE: &transE
     <<: *general
 
@@ -21,5 +22,14 @@ flow:
     num_gpus: 0
     optimizer: SGD
     options:
-      <<: *transE
+      <<: *general
+  - model: TransD
+    log_level: VERBOSE
+    state_filename: "trans_d.ckpt"
+    dataset_filename: "train_triplets.tfrecord"
+    log_device_placement: True
+    num_gpus: 0
+    optimizer: SGD
+    options:
+      <<: *general
 

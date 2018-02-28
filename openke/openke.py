@@ -21,8 +21,7 @@ def _parse_function(example_proto):
 def build_model(model, options):
   """build model by config."""
   if model == "TransD":
-    pass
-    # return openke.models.TransD(options)
+    return openke.models.transd
   elif model == "TransE":
     return openke.models.transe
   elif model == "TransH":
@@ -40,15 +39,15 @@ def build_optimizer(optimizer, options):
   else:
     return tf.train.GradientDescentOptimizer(options['alpha'])
 
-def prepare_batch(next_element):
-  # el = [ for n in next_elements]
-  # el = reduce(lambda x,y: x+y, el)
-  # print(next_element[0].shape)
-  tensors = []
-  for element in next_element:
-    tensors.append(tf.convert_to_tensor(element[0]))
-  # print(session.run(tf.Print(tensors, [tensors])))
-  return tensors
+def prepare_batch(next_element, options):
+  pos_h, pos_r, pos_t, neg_h, neg_r, neg_t = next_element
+  pos_h = tf.transpose(pos_h)
+  pos_r = tf.transpose(pos_r)
+  pos_t = tf.transpose(pos_t)
+  neg_h = tf.reshape(neg_h, [options['batch_size'], -1])
+  neg_r = tf.reshape(neg_r, [options['batch_size'], -1])
+  neg_t = tf.reshape(neg_t, [options['batch_size'], -1])
+  return pos_h, pos_r, pos_t, neg_h, neg_r, neg_t
 
 class Step(object):
   """A class takes a train config and execute a run."""
@@ -73,11 +72,12 @@ class Step(object):
     """gets the train config."""
     return self._config
 
-  def initialize(self):
+  def initialize(self, restore_if_available=True):
     """setup the model and configurations."""
+    print("Initializing " + self._config.name)
     with self._session.as_default():
       initializer = tf.contrib.layers.xavier_initializer(uniform=False)
-      with tf.variable_scope("model", reuse=None, initializer=initializer):
+      with tf.variable_scope("model", reuse=tf.AUTO_REUSE, initializer=initializer):
         self._model = build_model(self._config.model, self._config.options)
         self._optimizer = build_optimizer(self._config.optimizer, self._config.options)
         self._model_variables = self._model.init_variables(self._config.options)
@@ -102,11 +102,12 @@ class Step(object):
       self._next_element = self._iterator.get_next()
       self._staging_area = tf.contrib.staging.StagingArea(dtypes=[tf.int64, tf.int64, tf.int64, tf.int64, tf.int64, tf.int64])
 
-      # warm up
+      self._saver = tf.train.Saver(tf.global_variables())
+      if restore_if_available and (
+        self._config.state_filename is not None and os.path.exists(self._config.state_filename)):
+        self._saver.restore(self._session, self._config.state_filename)
+
       self._session.run(self._iterator.initializer)
-      # batch = prepare_batch(self._next_elements, self._session)
-      # print(batch.dtype, self._session.run(tf.Print(batch, [batch])))
-      # self._staging_area.put((batch,))
 
   def average_gradients(self, tower_grads):
     """Calculate the average gradient for each shared variable across all towers.
@@ -148,7 +149,7 @@ class Step(object):
     checkpoint_path = os.path.join(self._config.path, self._config.state_filename)
     self._saver.save(self._session, checkpoint_path, global_step=step)
 
-  def run(self, restore_if_available=True):
+  def run(self):
     """train next batch."""
 
     losses = []
@@ -158,14 +159,13 @@ class Step(object):
         # with tf.device('/gpu:%d' % i):
       with tf.name_scope('%s_%d' % (self._config.name, 0)) as scope:
         # batch_data = prepare_batch(self._next_element)
-        loss = self._model.loss(scope, self._next_element, self._model_variables, self._config.options, self._session)
+        loss = self._model.loss(prepare_batch(self._next_element, self._config.options), self._model_variables, self._config.options)
 
         tf.get_variable_scope().reuse_variables()
         # Retain the summaries from the final tower.
         summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
         grad = self._optimizer.compute_gradients(loss)
-        print("-"*40, grad)
         tower_grads.append(grad)
         losses.append(loss)
 
@@ -185,20 +185,6 @@ class Step(object):
     # Add histograms for trainable variables.
     for var in tf.trainable_variables():
       summaries.append(tf.summary.histogram(var.op.name, var))
-
-    # # Track the moving averages of all trainable variables.
-    # variable_averages = tf.train.ExponentialMovingAverage(
-    #     MOVING_AVERAGE_DECAY, self._global_step)
-    # variables_averages_op = variable_averages.apply(tf.trainable_variables())
-
-    # Group all updates to into a single train op.
-    # train_op = tf.group(apply_gradient_op, variables_averages_op)
-
-    # Create a saver.
-    self._saver = tf.train.Saver(tf.global_variables())
-    if restore_if_available and (
-      self._config.state_filename is not None and os.path.exists(self._config.state_filename)):
-      self._saver.restore(self._session, self._config.state_filename)
 
     # Build the summary operation from the last tower summaries.
     summary_op = tf.summary.merge(summaries)
