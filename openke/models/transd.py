@@ -63,3 +63,16 @@ def loss(train_data, variables, options):
   n_score = tf.reduce_sum(tf.reduce_mean(_n_score, 1, keep_dims=False), 1, keep_dims=True)
   #Calculating loss to get what the framework will optimize
   return tf.reduce_sum(tf.maximum(p_score - n_score + options['margin'], 0))
+
+def predict(test_data, variables, options):
+  predict_h, predict_r, predict_t = test_data
+  predict_h_e = tf.nn.embedding_lookup(variables['ent_embeddings'], predict_h)
+  predict_t_e = tf.nn.embedding_lookup(variables['ent_embeddings'], predict_t)
+  predict_r_e = tf.nn.embedding_lookup(variables['rel_embeddings'], predict_r)
+  predict_h_t = tf.nn.embedding_lookup(variables['ent_transfer'], predict_h)
+  predict_t_t = tf.nn.embedding_lookup(variables['ent_transfer'], predict_t)
+  predict_r_t = tf.nn.embedding_lookup(variables['rel_transfer'], predict_r)
+  h_e = _transfer(predict_h_e, predict_h_t, predict_r_t)
+  t_e = _transfer(predict_t_e, predict_t_t, predict_r_t)
+  r_e = predict_r_e
+	return tf.reduce_sum(_calc(h_e, t_e, r_e), 1, keep_dims=True)

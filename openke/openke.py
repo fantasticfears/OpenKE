@@ -198,7 +198,15 @@ class Step(object):
       start_time = time.time()
 
       try:
-        _, loss_value = self._session.run([apply_gradient_op, total_loss_op])
+        if step % 1000 == 0:
+          run_options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+          run_metadata = tf.RunMetadata()
+          _, loss_value = self._session.run([apply_gradient_op, total_loss_op],
+            options=run_options,
+            run_metadata=run_metadata)
+          summary_writer.add_run_metadata(run_metadata, 'step%d' % step)
+        else:
+          _, loss_value = self._session.run([apply_gradient_op, total_loss_op])
       except tf.errors.OutOfRangeError as e:
         self.save_progress(self._global_step)
         return tf.train.global_step(self._session, self._global_step)
@@ -246,6 +254,8 @@ class Reasonator(object):
 class EmbeddingsTest(object):
   def __init__(self, config):
     self._config = config
+    self._session = tf.Session()
+
     with self._session.as_default():
       initializer = tf.contrib.layers.xavier_initializer(uniform=False)
       with tf.variable_scope("model", reuse=False, initializer=initializer):
@@ -260,9 +270,6 @@ class EmbeddingsTest(object):
         tf.TensorShape([None]),
         tf.TensorShape([None]),
         tf.TensorShape([None]),
-        tf.TensorShape([None]),
-        tf.TensorShape([None]),
-        tf.TensorShape([None])
       ))
       self._iterator = self._dataset.make_initializable_iterator()
       self._next_element = self._iterator.get_next()
@@ -273,21 +280,20 @@ class EmbeddingsTest(object):
     self._session.run(init)
 
     self._saver = tf.train.Saver(self._model_variables)
-    self._saver.restore()
+    self._saver.restore(self._session, self._state_filename)
 
   def run(self):
     while True:
-      predict = self._model.predict(self._next_element, self._model_variables)
+      test_data, type_op = self._next_element
+      predict = self._model.predict(test_data, self._model_variables)
       try:
-        result = self._session.run([predict])
+        result, type_ = self._session.run([predict, type_op])
       except tf.errors.OutOfRangeError as e:
         return self._report()
-      self._add_to_stat(result)
+      self._add_to_stat(result, type_)
 
-class Validator(object):
-  """Validation over test data."""
-  def __init__(self, test_options: TestOptions):
-    self._config = test_options
+  def _add_to_stat(self, result, type_):
+    """Process result tensor."""
 
-  def test(self):
-    EmbeddingsTest(self._config).run()
+  def _report(self):
+    pass

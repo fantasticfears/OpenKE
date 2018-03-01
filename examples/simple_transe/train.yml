@@ -4,7 +4,7 @@ model_options:
       entity: 14952
       relation: 1346
       hidden: 50
-    train_iterations: 10
+    train_iterations: 1000
     margin: 1.0
     alpha: 0.001
     lambda: 0.000
