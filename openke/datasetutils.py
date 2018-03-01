@@ -188,7 +188,7 @@ def parse_test_triplets_from_sequence_example(ex):
   :return: A dictionary of tensors, in this case {seq: The sequence, length: The length of the sequence}
   '''
   context_features = {
-    "type": tf.FixedLenFeature([], dtype=tf.string)
+    "type": tf.FixedLenFeature([], dtype=tf.string),
     "length": tf.FixedLenFeature([], dtype=tf.int64)
   }
   sequence_features = {
