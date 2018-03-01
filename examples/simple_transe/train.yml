@@ -19,7 +19,7 @@ flow:
     state_filename: "trans_e.ckpt"
     dataset_filename: "train_triplets.tfrecord"
     log_device_placement: True
-    num_gpus: 0
+    num_gpus: 2
     optimizer: SGD
     options:
       <<: *general
@@ -28,7 +28,7 @@ flow:
     state_filename: "trans_e.ckpt"
     dataset_filename: "train_triplets.tfrecord"
     log_device_placement: True
-    num_gpus: 0
+    num_gpus: 2
     optimizer: SGD
     options:
       <<: *general

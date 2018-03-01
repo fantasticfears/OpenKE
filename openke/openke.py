@@ -140,19 +140,18 @@ class Step(object):
     losses = []
     tower_grads = []
     with tf.variable_scope(tf.get_variable_scope()):
-      # for i in range(self._config.num_gpus):
-        # with tf.device('/gpu:%d' % i):
-      with tf.name_scope('%s_%d' % (self._config.name, 0)) as scope:
-        # batch_data = prepare_batch(self._next_element)
-        loss = self._model.loss(prepare_batch(self._next_element, self._config.options), self._model_variables, self._config.options)
+      for i in range(self._config.num_gpus):
+        with tf.device('/gpu:%d' % i):
+          with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
+            loss = self._model.loss(prepare_batch(self._next_element, self._config.options), self._model_variables, self._config.options)
 
-        tf.get_variable_scope().reuse_variables()
-        # Retain the summaries from the final tower.
-        summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+            tf.get_variable_scope().reuse_variables()
+            # Retain the summaries from the final tower.
+            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-        grad = self._optimizer.compute_gradients(loss)
-        tower_grads.append(grad)
-        losses.append(loss)
+            grad = self._optimizer.compute_gradients(loss)
+            tower_grads.append(grad)
+            losses.append(loss)
 
     total_loss_op = tf.add_n(losses)
     grads = tower_grads[0]
