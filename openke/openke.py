@@ -302,8 +302,8 @@ class EmbeddingsTest(object):
     self._saver = tf.train.Saver(self._model_variables)
     self._saver.restore(self._session, self._config.state_filename)
 
-  def _prepare_test_batch(self, test_data, type_):
-    h, r, t = test_data
+  def _prepare_test_batch(self, next_element, batch_size):
+    h, r, t, type_ = next_element
 
     triplets = []
     for p_a, r_a, t_a in zip(h, r, t):
@@ -330,19 +330,15 @@ class EmbeddingsTest(object):
     return batch, type_, triplets
 
   def run(self):
-
+    test_data, type_op, triplets_op = self._prepare_test_batch(self._next_element, self._config.options['batch_size'])
+    predict = self._model.predict(test_data, self._model_variables)
     while True:
-      test_data, type_op, triplet_op = self._prepare_test_batch(self._next_element)
-      predict = self._model.predict(test_data, self._model_variables)
       try:
-        test_data, type_ = self._session.run([self._next_element])
+        predict_result, type_, triplets = self._session.run([predict, type_op, triplets_op])
       except tf.errors.OutOfRangeError as e:
         return self._report()
-
-      for i in self._prepare_test_batch(test_data):
-        pass
-      result, type_, triplet = self._session.run([predict, type_op, triplet_op])
-      self._add_to_stat(result, type_, triplet)
+      for result, triplet in zip(predict_result, triplets):
+        self._add_to_stat(result, type_, triplet)
 
   def _add_to_stat(self, result, type_, triplet):
     """Process result tensor."""

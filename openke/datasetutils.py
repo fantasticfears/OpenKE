@@ -216,8 +216,7 @@ def parse_test_triplets_from_sequence_example(ex):
   '''
   context_features = {
     "type": tf.FixedLenFeature([], dtype=tf.string),
-    "length": tf.FixedLenFeature([], dtype=tf.int64),
-    "triplet": tf.FixedLenFeature([], dtype=tf.int64)
+    "length": tf.FixedLenFeature([], dtype=tf.int64)
   }
   sequence_features = {
     "heads": tf.FixedLenSequenceFeature([], dtype=tf.int64),
@@ -234,6 +233,5 @@ def parse_test_triplets_from_sequence_example(ex):
   return (sequence_parsed["heads"],
       sequence_parsed["relations"],
       sequence_parsed["tails"],
-      context_features["type"],
-      context_features["triplet"]
+      context_features["type"]
   )
