@@ -102,6 +102,7 @@ class TestOptions(object):
   def __init__(self, yaml_filename: str = DEFAULT_TEST_CONFIG_FILENAME):
     """Loads the config from a file."""
     config = load_from_yaml(yaml_filename)
+    self._path = os.path.abspath(os.path.join(yaml_filename, '..'))
     self._state_filename = config.get('state_filename')
     self._model = config.get('model')
     self._dataset_filename = config.get('dataset_filename')
@@ -126,3 +127,8 @@ class TestOptions(object):
   def dataset_filename(self):
     """gets the dataset filename."""
     return self._dataset_filename
+
+  @property
+  def path(self):
+    """gets the config dir."""
+    return self._path

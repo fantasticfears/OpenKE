@@ -4,7 +4,7 @@ import os
 import time
 import datetime
 from functools import reduce
-from openke.datasetutils import parse_triplets_from_sequence_example
+from openke.datasetutils import parse_triplets_from_sequence_example, parse_test_triplets_from_sequence_example, read_training_triplets_file
 
 from openke.config import TrainStep, TrainOptions, TestOptions
 import openke.models
@@ -256,6 +256,26 @@ class EmbeddingsTest(object):
     self._config = config
     self._session = tf.Session()
 
+    self._l_filter_total = 0
+    self._l_total = 0
+    self._l3_filter_total = 0
+    self._l3_total = 0
+    self._l1_filter_total = 0
+    self._l_filter_rank = 0
+    self._l_rank = 0
+
+    self._r_filter_total = 0
+    self._r_total = 0
+    self._r3_filter_total = 0
+    self._r3_total = 0
+    self._r1_filter_total = 0
+    self._r_filter_rank = 0
+    self._r_rank = 0
+
+    self._triplet_list = read_training_triplets_file(self._config.path, self._config.triplet_list_filename)
+    self._total_triplet = len(self._triplet_list)
+    self._total_entity = self._config.total_entity
+
     with self._session.as_default():
       initializer = tf.contrib.layers.xavier_initializer(uniform=False)
       with tf.variable_scope("model", reuse=False, initializer=initializer):
@@ -265,7 +285,7 @@ class EmbeddingsTest(object):
       self._global_step = tf.Variable(0, name="global_step", trainable=False)
 
       self._dataset = tf.data.TFRecordDataset(self._config.dataset_filename)
-      self._dataset = self._dataset.map(parse_triplets_from_sequence_example)
+      self._dataset = self._dataset.map(parse_test_triplets_from_sequence_example)
       self._dataset = self._dataset.padded_batch(1, padded_shapes=(
         tf.TensorShape([None]),
         tf.TensorShape([None]),
@@ -280,20 +300,132 @@ class EmbeddingsTest(object):
     self._session.run(init)
 
     self._saver = tf.train.Saver(self._model_variables)
-    self._saver.restore(self._session, self._state_filename)
+    self._saver.restore(self._session, self._config.state_filename)
+
+  def _prepare_test_batch(self, test_data, type_):
+    h, r, t = test_data
+
+    triplets = []
+    for p_a, r_a, t_a in zip(h, r, t):
+      triplets.append((p_a, r_a, t_a))
+    h = tf.transpose(h) # (batch_size, 1)
+    r = tf.transpose(r) # (batch_size, 1)
+    t = tf.transpose(t) # (batch_size, 1)
+    h_s = tf.split(tf.tile(h, [1, self._total_entity]), self._total_entity, axis=1) # [(batch_size, 1)*_total_entity]
+    r_s = tf.split(tf.tile(r, [1, self._total_entity]), self._total_entity, axis=1) # [(batch_size, 1)*_total_entity]
+    t_s = tf.split(tf.tile(t, [1, self._total_entity]), self._total_entity, axis=1) # [(batch_size, 1)*_total_entity]
+    r_s = [tf.transpose(a) for a in tf.split(tf.tile(r_s, [1, self._total_entity]), self._total_entity, axis=0)]
+    range_ents = tf.expand_dims(tf.range(1, self._total_entity + 1), 1) # (total_entity, 1)
+    if type_ == 'head':
+      h_s = [range_ents] * batch_size
+      t_s = [tf.transpose(a) for a in tf.split(tf.tile(t_s, [1, self._total_entity]), self._total_entity, axis=0)]
+    else:
+      h_s = [tf.transpose(a) for a in tf.split(tf.tile(h_s, [1, self._total_entity]), self._total_entity, axis=0)]
+      t_s = [range_ents] * batch_size
+
+    batch = []
+    for h, r, t in zip(h_s, r_s, t_s):
+      batch.append((h, r, t))
+
+    return batch, type_, triplets
 
   def run(self):
+
     while True:
-      test_data, type_op = self._next_element
+      test_data, type_op, triplet_op = self._prepare_test_batch(self._next_element)
       predict = self._model.predict(test_data, self._model_variables)
       try:
-        result, type_ = self._session.run([predict, type_op])
+        test_data, type_ = self._session.run([self._next_element])
       except tf.errors.OutOfRangeError as e:
         return self._report()
-      self._add_to_stat(result, type_)
 
-  def _add_to_stat(self, result, type_):
+      for i in self._prepare_test_batch(test_data):
+        pass
+      result, type_, triplet = self._session.run([predict, type_op, triplet_op])
+      self._add_to_stat(result, type_, triplet)
+
+  def _add_to_stat(self, result, type_, triplet):
     """Process result tensor."""
+    if type_ == 'head':
+      self._test_head(result, triplet)
+    else:
+      self._test_tail(result, triplet)
+
+  def _test_head(self, result, triplet):
+    h, t, r = triplet
+    predicted = result[h]
+
+    l_pos = 0
+    l_filter_pos = 0
+
+    for ent in range(self._total_entity + 1):
+      val = result[ent]
+      if val < predicted:
+        l_pos += 1
+        if not self._find(ent, r, t):
+          l_filter_pos += 1
+
+    if l_filter_pos < 10:
+      self._l_filter_total += 1
+    if l_pos < 10:
+      self._l_total += 1
+    if l_filter_pos < 3:
+      self._l3_filter_total += 1
+    if l_pos < 3:
+      self._l3_total += 1
+    if l_filter_pos < 1:
+      self._l1_filter_total += 1
+
+    self._l_filter_rank += l_filter_pos + 1
+    self._l_rank += 1 + l_pos
+
+  def _test_tail(self, result, triplet):
+    h, t, r = triplet
+    predicted = result[h]
+
+    r_pos = 0
+    r_filter_pos = 0
+
+    for ent in range(self._total_entity + 1):
+      val = result[ent]
+      if val < predicted:
+        r_pos += 1
+        if not self._find(h, r, ent):
+          r_filter_pos += 1
+
+    if r_filter_pos < 10:
+      self._r_filter_total += 1
+    if r_pos < 10:
+      self._r_total += 1
+    if r_filter_pos < 3:
+      self._r3_filter_total += 1
+    if r_pos < 3:
+      self._r3_total += 1
+    if r_filter_pos < 1:
+      self._r1_filter_total += 1
+
+    self._r_filter_rank += r_filter_pos + 1
+    self._r_rank += 1 + r_pos
+
+  def _find(self, h, r, t):
+    lef = 0
+    rig = self._total_triplet - 1
+    mid = 0
+    while lef + 1 < rig:
+      mid = (lef + rig) // 2
+      t = self._triplet_list[mid]
+      if t[0] < h or (t[0] == h and t[1] < r) or ((t[0], t[1]) == (h, r) and t[2] < t):
+        lef = mid
+      else:
+        rig = mid
+
+    l_t = self._triplet_list[lef]
+    if l_t == (h, r, t):
+      return True
+    r_t = self._triplet_list[rig]
+    if r_t == (h, r, t):
+      return True
+    return False
 
   def _report(self):
     pass

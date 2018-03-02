@@ -1,0 +1,4 @@
+state_filename: "trans_e.ckpt"
+model: TransE
+dataset_filename: test_triplets.tfrecord
+options:
