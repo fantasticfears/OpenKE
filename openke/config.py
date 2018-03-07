@@ -107,6 +107,9 @@ class TestOptions(object):
     self._model = config.get('model')
     self._dataset_filename = config.get('dataset_filename')
     self._options = config.get('options')
+    self._triplet_list_filename = config.get('triplet_list_filename')
+    self._entity_map_filename = config.get('entity_map_filename')
+    self._relation_map_filename = config.get('relation_map_filename')
 
   @property
   def state_filename(self):
@@ -132,3 +135,15 @@ class TestOptions(object):
   def path(self):
     """gets the config dir."""
     return self._path
+
+  @property
+  def triplet_list_filename(self):
+    return self._triplet_list_filename
+
+  @property
+  def entity_map_filename(self):
+    return self._entity_map_filename
+
+  @property
+  def relation_map_filename(self):
+    return self._relation_map_filename

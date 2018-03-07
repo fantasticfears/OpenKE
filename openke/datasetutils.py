@@ -47,24 +47,26 @@ def write_training_triplets_file(triplets, filename: str, dataset_dir: str):
 def read_training_triplets_file(dataset_dir, filename):
   labels_filename = os.path.join(dataset_dir, filename)
   with tf.gfile.Open(labels_filename, 'r') as file:
-    lines = file.read().decode()
+    lines = file.read()
   lines = lines.split('\n')
   lines = filter(None, lines)
 
   triplets = []
   for line in lines:
-    triplets.append(tuple(line.split(':')))
+    triplets.append(tuple([int(a) for a in line.split(':')]))
   return triplets
 
 def convert_dataset(num_triplets: int,
                     batch_size: int,
+                    test_batch_size: int,
                     reader,
                     entities_to_ids: Dict[str, int],
                     relations_to_ids: Dict[str, int],
                     dataset_dir: str,
                     negative_relation_rate: int,
                     negative_entity_rate: int,
-                    bern: bool):
+                    bern: bool,
+                    skip_training_triplet=False):
   """Converts the given filenames to a TFRecord dataset.
   Args:
     split_name: The name of the dataset, either 'train' or 'validation'.
@@ -88,38 +90,39 @@ def convert_dataset(num_triplets: int,
 
   gentrain.freq()
 
-  training_triplets = []
-  sys.stdout.write('\r>> Proceeding to generate training triplets')
-  sys.stdout.flush()
-  with tf.python_io.TFRecordWriter("train_triplets.tfrecord") as writer:
-    max_shard = read_triplet // batch_size + 1
-    for shard in range(max_shard):
-      triplets = []
-      for _ in range(batch_size):
-        sys.stdout.write('\r>> Writing triplet shard %d/%d' % (
-            shard, max_shard))
+  if not skip_training_triplet:
+    training_triplets = []
+    sys.stdout.write('\r>> Proceeding to generate training triplets')
+    sys.stdout.flush()
+    with tf.python_io.TFRecordWriter(os.path.join(dataset_dir, "train_triplets.tfrecord")) as writer:
+      max_shard = read_triplet // batch_size + 1
+      for shard in range(max_shard):
+        triplets = []
+        for _ in range(batch_size):
+          sys.stdout.write('\r>> Writing triplet shard %d/%d' % (
+              shard + 1, max_shard))
 
-        t = gentrain.yield_triplets(negative_relation_rate, negative_entity_rate, bern)
-        triplets.append(t)
-        training_triplets.append(t[0])
+          t = gentrain.yield_triplets(negative_relation_rate, negative_entity_rate, bern)
+          triplets.append(t)
+          training_triplets.append(t[0])
 
-      ex = triplets_to_tf_example(triplets)
-      writer.write(ex.SerializeToString())
+        ex = triplets_to_tf_example(triplets)
+        writer.write(ex.SerializeToString())
 
-  write_training_triplets_file(training_triplets, 'training_triplets.list', dataset_dir)
+    write_training_triplets_file(training_triplets, 'training_triplets.list', dataset_dir)
 
   sys.stdout.write('\r>> Proceeding to generate test triplets')
   sys.stdout.flush()
   max_entity = len(entities_to_ids)
-  with tf.python_io.TFRecordWriter("test_triplets.tfrecord") as writer:
+  with tf.python_io.TFRecordWriter(os.path.join(dataset_dir, "test_triplets.tfrecord")) as writer:
     max_shard = read_triplet // 20 // batch_size + 1
     for type_ in ["head", "tail"]:
       for shard in range(max_shard):
         triplets = []
 
-        for _ in range(batch_size):
+        for _ in range(test_batch_size):
           sys.stdout.write('\r>> Writing triplet shard %d/%d' % (
-              shard, max_shard))
+              shard + 1, max_shard))
 
           triplets.append(gentrain.yield_triplets(0, 0, False))
 
@@ -133,6 +136,10 @@ def test_triplets_to_tf_example(batch, type_):
   ex = tf.train.SequenceExample()
   # context for sequence example
   ex.context.feature["type"].bytes_list.value.append(type_.encode())
+  # if type_ == 'head':
+  #   type_feature.int64_list.value.append(0)
+  # else:
+  #   type_feature.int64_list.value.append(1)
   triplets_length = len(batch) * len(batch[0])
   ex.context.feature["length"].int64_list.value.append(triplets_length)
 
@@ -210,7 +217,7 @@ def parse_triplets_from_sequence_example(ex):
 
 def parse_test_triplets_from_sequence_example(ex):
   '''
-  Explain to TF how to go froma  serialized example back to tensors
+  Explain to TF how to go from serialized example back to tensors
   :param ex:
   :return: A dictionary of tensors, in this case {seq: The sequence, length: The length of the sequence}
   '''
@@ -230,8 +237,9 @@ def parse_test_triplets_from_sequence_example(ex):
     context_features=context_features,
     sequence_features=sequence_features
   )
+
   return (sequence_parsed["heads"],
       sequence_parsed["relations"],
       sequence_parsed["tails"],
-      context_features["type"]
+      context_parsed["type"]
   )

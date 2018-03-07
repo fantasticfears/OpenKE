@@ -249,7 +249,34 @@ class TrainFlow(object):
 
 class Reasonator(object):
   """Applies link prediction and triplet classification."""
-  pass
+  def __init__(self, state_path, model, entity_map_path, relation_map_path):
+    self._config = config
+    self._session = tf.Session()
+    self._saver = None
+    self._model = None
+    self._model_variables = None
+
+    self._state_path = state_path
+    self._entity_map_path = entity_map_path
+    self._relation_map_path = relation_map_path
+    self._session = tf.Session()
+
+    with self._session.as_default():
+      initializer = tf.contrib.layers.xavier_initializer(uniform=False)
+      with tf.variable_scope("model", reuse=True, initializer=initializer):
+        self._model = build_model(self._config.model)
+        self._model_variables = self._model.init_variables(self._config.options)
+
+    self._saver = tf.train.Saver(self._model_variables)
+    self._saver.restore(self._session, self._config.state_filename)
+
+  def classify(triplet):
+    self._session.run([self._model.predict(triplet, self._model_variables, self._config.options)])
+
+  def predict(triplet, direction=0):
+    pass
+    # self._session.run
+
 
 class EmbeddingsTest(object):
   def __init__(self, config):
@@ -274,7 +301,7 @@ class EmbeddingsTest(object):
 
     self._triplet_list = read_training_triplets_file(self._config.path, self._config.triplet_list_filename)
     self._total_triplet = len(self._triplet_list)
-    self._total_entity = self._config.total_entity
+    self._total_entity = self._config.options['embedding_size']['entity']
 
     with self._session.as_default():
       initializer = tf.contrib.layers.xavier_initializer(uniform=False)
@@ -286,11 +313,12 @@ class EmbeddingsTest(object):
 
       self._dataset = tf.data.TFRecordDataset(self._config.dataset_filename)
       self._dataset = self._dataset.map(parse_test_triplets_from_sequence_example)
-      self._dataset = self._dataset.padded_batch(1, padded_shapes=(
-        tf.TensorShape([None]),
-        tf.TensorShape([None]),
-        tf.TensorShape([None]),
-      ))
+      # self._dataset = self._dataset.padded_batch(1, padded_shapes=(
+      #   tf.TensorShape([None]),
+      #   tf.TensorShape([None]),
+      #   tf.TensorShape([None]),
+      #   tf.TensorShape([None])
+      # ))
       self._iterator = self._dataset.make_initializable_iterator()
       self._next_element = self._iterator.get_next()
 
@@ -305,25 +333,27 @@ class EmbeddingsTest(object):
   def _prepare_test_batch(self, next_element, batch_size):
     h, r, t, type_ = next_element
 
-    triplets = []
-    for p_a, r_a, t_a in zip(h, r, t):
-      triplets.append((p_a, r_a, t_a))
-    h = tf.transpose(h) # (batch_size, 1)
-    r = tf.transpose(r) # (batch_size, 1)
-    t = tf.transpose(t) # (batch_size, 1)
-    h_s = tf.split(tf.tile(h, [1, self._total_entity]), self._total_entity, axis=1) # [(batch_size, 1)*_total_entity]
-    r_s = tf.split(tf.tile(r, [1, self._total_entity]), self._total_entity, axis=1) # [(batch_size, 1)*_total_entity]
-    t_s = tf.split(tf.tile(t, [1, self._total_entity]), self._total_entity, axis=1) # [(batch_size, 1)*_total_entity]
-    r_s = [tf.transpose(a) for a in tf.split(tf.tile(r_s, [1, self._total_entity]), self._total_entity, axis=0)]
-    range_ents = tf.expand_dims(tf.range(1, self._total_entity + 1), 1) # (total_entity, 1)
-    if type_ == 'head':
+    h = tf.expand_dims(h, 1) # (batch_size, 1)
+    r = tf.expand_dims(r, 1) # (batch_size, 1)
+    t = tf.expand_dims(t, 1) # (batch_size, 1)
+    triplets = tf.concat([h, r, t], axis=1)
+
+    r_s = tf.split(tf.tile(r, [1, self._total_entity]), batch_size, axis=0) # [(batch_size, 1)*_total_entity]
+    r_s = [tf.transpose(r) for r in r_s]
+    range_ents = tf.expand_dims(tf.range(0, self._total_entity), 1) # (total_entity, 1)
+    if type_ == b'head':
       h_s = [range_ents] * batch_size
-      t_s = [tf.transpose(a) for a in tf.split(tf.tile(t_s, [1, self._total_entity]), self._total_entity, axis=0)]
+      t_s = tf.split(tf.tile(t, [1, self._total_entity]), batch_size, axis=0) # [(1, _total_entity)] * batch_size
+      t_s = [tf.transpose(t) for t in t_s]
     else:
-      h_s = [tf.transpose(a) for a in tf.split(tf.tile(h_s, [1, self._total_entity]), self._total_entity, axis=0)]
+      h_s = tf.split(tf.tile(h, [1, self._total_entity]), batch_size, axis=0) # [(batch_size, 1)*_total_entity]
+      h_s = [tf.transpose(h) for h in h_s]
       t_s = [range_ents] * batch_size
 
     batch = []
+    # h_s = tf.Print(h_s, [h_s])
+    # r_s = tf.Print(r_s, [r_s])
+    # t_s = tf.Print(t_s, [t_s])
     for h, r, t in zip(h_s, r_s, t_s):
       batch.append((h, r, t))
 
@@ -331,18 +361,18 @@ class EmbeddingsTest(object):
 
   def run(self):
     test_data, type_op, triplets_op = self._prepare_test_batch(self._next_element, self._config.options['batch_size'])
-    predict = self._model.predict(test_data, self._model_variables)
+    predicts = [self._model.predict(d, self._model_variables, self._config.options) for d in test_data]
     while True:
       try:
-        predict_result, type_, triplets = self._session.run([predict, type_op, triplets_op])
+        predicts_result, type_, triplets = self._session.run([predicts, type_op, triplets_op])
       except tf.errors.OutOfRangeError as e:
         return self._report()
-      for result, triplet in zip(predict_result, triplets):
+      for result, triplet in zip(predicts_result, triplets):
         self._add_to_stat(result, type_, triplet)
 
   def _add_to_stat(self, result, type_, triplet):
     """Process result tensor."""
-    if type_ == 'head':
+    if type_ == b'head':
       self._test_head(result, triplet)
     else:
       self._test_tail(result, triplet)
@@ -350,11 +380,12 @@ class EmbeddingsTest(object):
   def _test_head(self, result, triplet):
     h, t, r = triplet
     predicted = result[h]
+    print(len(result), predicted)
 
     l_pos = 0
     l_filter_pos = 0
 
-    for ent in range(self._total_entity + 1):
+    for ent in range(self._total_entity):
       val = result[ent]
       if val < predicted:
         l_pos += 1
@@ -382,7 +413,7 @@ class EmbeddingsTest(object):
     r_pos = 0
     r_filter_pos = 0
 
-    for ent in range(self._total_entity + 1):
+    for ent in range(self._total_entity):
       val = result[ent]
       if val < predicted:
         r_pos += 1
@@ -424,4 +455,5 @@ class EmbeddingsTest(object):
     return False
 
   def _report(self):
-    pass
+    print(self._l_filter_total, self._l_total, self._l3_filter_total, self._l3_total, self._l1_filter_total, self._l_filter_rank, self._l_rank)
+    print(self._r_filter_total, self._r_total, self._r3_filter_total, self._r3_total, self._r1_filter_total, self._r_filter_rank, self._r_rank)

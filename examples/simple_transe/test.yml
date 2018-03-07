@@ -1,4 +1,12 @@
-state_filename: "trans_e.ckpt"
+state_filename: "trans_e.ckpt-1000"
 model: TransE
 dataset_filename: test_triplets.tfrecord
+triplet_list_filename: training_triplets.list
+entity_map_filename: entity_id.map
+relation_map_filename: relation_id.map
 options:
+  batch_size: 10
+  embedding_size:
+    entity: 14952
+    relation: 1346
+    hidden: 50

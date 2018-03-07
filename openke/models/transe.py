@@ -39,7 +39,11 @@ def loss(train_data, variables, options):
 
 def predict(test_data, variables, options):
   predict_h, predict_r, predict_t = test_data
+
   predict_h_e = tf.nn.embedding_lookup(variables['ent_embeddings'], predict_h)
   predict_t_e = tf.nn.embedding_lookup(variables['ent_embeddings'], predict_t)
   predict_r_e = tf.nn.embedding_lookup(variables['rel_embeddings'], predict_r)
-  return tf.reduce_mean(_calc(predict_h_e, predict_t_e, predict_r_e), 1, keep_dims=False)
+  predict_h_e = tf.Print(predict_h_e, [predict_h_e, tf.shape(predict_h_e)])
+  predict_t_e = tf.Print(predict_t_e, [predict_t_e, tf.shape(predict_t_e)])
+  predict_r_e = tf.Print(predict_r_e, [predict_r_e, tf.shape(predict_r_e)])
+  return tf.reduce_sum(tf.reduce_mean(_calc(predict_h_e, predict_t_e, predict_r_e), 1, keep_dims=False), 1)

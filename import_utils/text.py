@@ -14,7 +14,9 @@ flags.DEFINE_string('dataset_dir', None, 'String: Your dataset directory')
 flags.DEFINE_string('dataset_file', None, 'String: Your dataset file')
 flags.DEFINE_string('split_name', 'train', '`train` or `validation`')
 flags.DEFINE_integer('batch_size', 512, 'Int: Number of triplets in a batch')
+flags.DEFINE_integer('test_batch_size', 10, 'Int: Number of triplets in a test batch')
 flags.DEFINE_string('tfrecord_filename', None, 'String: The output filename to name your TFRecord file')
+flags.DEFINE_boolean('skip_training_triplet', False, 'Boolean: skip for fast generating')
 
 FLAGS = flags.FLAGS
 
@@ -49,13 +51,15 @@ def main():
     reader = csv.reader(f, delimiter='\t')
     convert_dataset(loc,
                     FLAGS.batch_size,
+                    FLAGS.test_batch_size,
                     reader,
                     entities_to_ids,
                     relations_to_ids,
                     FLAGS.dataset_dir,
                     negative_relation_rate=1,
                     negative_entity_rate=0,
-                    bern=False)
+                    bern=False,
+                    skip_training_triplet=FLAGS.skip_training_triplet)
 
   write_mapping_file(entities_to_ids, 'train2id.txt', FLAGS.dataset_dir)
   write_mapping_file(relations_to_ids, 'relation2id.txt', FLAGS.dataset_dir)
