@@ -8,13 +8,22 @@ model_options:
     margin: 1.0
     alpha: 0.001
     lambda: 0.000
-    batch_size: 1000
+    batch_size: 4831
   transE: &transE
     <<: *general
 
 name: "simple_transe"
 flow:
   - model: TransE
+    log_level: VERBOSE
+    state_filename: "trans_e.ckpt"
+    dataset_filename: "train_triplets.tfrecord"
+    log_device_placement: True
+    num_gpus: 2
+    optimizer: SGD
+    options:
+      <<: *general
+  - model: TransD
     log_level: VERBOSE
     state_filename: "trans_e.ckpt"
     dataset_filename: "train_triplets.tfrecord"
