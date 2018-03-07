@@ -1,4 +1,4 @@
-state_filename: "trans_e.ckpt-21288"
+state_filename: "trans_e.ckpt-11288"
 model: TransD
 dataset_filename: test_triplets.tfrecord
 triplet_list_filename: training_triplets.list
