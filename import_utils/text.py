@@ -15,7 +15,6 @@ flags.DEFINE_string('dataset_file', None, 'String: Your dataset file')
 flags.DEFINE_string('split_name', 'train', '`train` or `validation`')
 flags.DEFINE_integer('batch_size', 512, 'Int: Number of triplets in a batch')
 flags.DEFINE_integer('test_batch_size', 10, 'Int: Number of triplets in a test batch')
-flags.DEFINE_string('tfrecord_filename', None, 'String: The output filename to name your TFRecord file')
 flags.DEFINE_boolean('skip_training_triplet', False, 'Boolean: skip for fast generating')
 
 FLAGS = flags.FLAGS
@@ -29,16 +28,13 @@ def _get_entities_and_relations_from_tsv(dataset_dir: str, filename: str) -> Tup
     tsv = csv.reader(f, delimiter='\t')
     for row in tsv:
       entities.append(row[0])
-      entities.append(row[2])
-      relations.append(row[1])
+      entities.append(row[1])
+      relations.append(row[2])
       loc += 1
 
   return list(set(entities)), list(set(relations)), loc
 
 def main():
-  if not FLAGS.tfrecord_filename:
-    raise ValueError('tfrecord_filename is empty. Please state a tfrecord_filename argument.')
-
   if not FLAGS.dataset_dir:
     raise ValueError('dataset_dir is empty. Please state a dataset_dir argument.')
 
@@ -64,7 +60,7 @@ def main():
   write_mapping_file(entities_to_ids, 'train2id.txt', FLAGS.dataset_dir)
   write_mapping_file(relations_to_ids, 'relation2id.txt', FLAGS.dataset_dir)
 
-  print('\nFinished converting the %s dataset!' % (FLAGS.tfrecord_filename))
+  print('\nFinished converting the dataset!')
 
 if __name__ == "__main__":
   main()

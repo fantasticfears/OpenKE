@@ -78,9 +78,12 @@ def convert_dataset(num_triplets: int,
   write_mapping_file(entities_to_ids, 'entity_id.map', dataset_dir)
   write_mapping_file(relations_to_ids, 'relation_id.map', dataset_dir)
 
+  print("Entities: " + str(len(entities_to_ids)))
+  print("Relations: " + str(len(relations_to_ids)))
+  print("Training triplets: " + str(num_triplets))
   gentrain.init_buff(num_triplets, len(entities_to_ids), len(relations_to_ids))
 
-  for head, relation, tail in reader:
+  for head, tail, relation in reader:
     triplet = (entities_to_ids[head],
                 relations_to_ids[relation],
                 entities_to_ids[tail])
