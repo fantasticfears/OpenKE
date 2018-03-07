@@ -379,8 +379,9 @@ class EmbeddingsTest(object):
       self._test_tail(result, triplet)
 
   def _test_head(self, result, triplet):
-    h, t, r = triplet
+    h, r, t = triplet
     predicted = result[h]
+    print("testing head: " + str(triplet))
 
     l_pos = 0
     l_filter_pos = 0
@@ -391,6 +392,7 @@ class EmbeddingsTest(object):
         l_pos += 1
         if not self._find(ent, r, t):
           l_filter_pos += 1
+    print("pos: " + str(l_pos) + " " + str(l_filter_pos))
 
     if l_filter_pos < 10:
       self._l_filter_total += 1
@@ -409,8 +411,9 @@ class EmbeddingsTest(object):
     self._l_rank += 1 + l_pos
 
   def _test_tail(self, result, triplet):
-    h, t, r = triplet
+    h, r, t = triplet
     predicted = result[h]
+    print("testing tail: " + str(triplet))
 
     r_pos = 0
     r_filter_pos = 0
@@ -421,6 +424,7 @@ class EmbeddingsTest(object):
         r_pos += 1
         if not self._find(h, r, ent):
           r_filter_pos += 1
+    print("pos: " + str(r_pos) + " " + str(r_filter_pos))
 
     if r_filter_pos < 10:
       self._r_filter_total += 1
@@ -444,8 +448,8 @@ class EmbeddingsTest(object):
     mid = 0
     while lef + 1 < rig:
       mid = (lef + rig) // 2
-      t = self._triplet_list[mid]
-      if t[0] < h or (t[0] == h and t[1] < r) or ((t[0], t[1]) == (h, r) and t[2] < t):
+      tp = self._triplet_list[mid]
+      if tp[0] < h or (tp[0] == h and tp[1] < r) or ((tp[0], tp[1]) == (h, r) and tp[2] < t):
         lef = mid
       else:
         rig = mid
