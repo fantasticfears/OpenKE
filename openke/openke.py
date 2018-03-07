@@ -283,11 +283,13 @@ class EmbeddingsTest(object):
     self._config = config
     self._session = tf.Session()
 
+    self._test_total = 0
     self._l_filter_total = 0
     self._l_total = 0
     self._l3_filter_total = 0
     self._l3_total = 0
     self._l1_filter_total = 0
+    self._l1_total = 0
     self._l_filter_rank = 0
     self._l_rank = 0
 
@@ -296,6 +298,7 @@ class EmbeddingsTest(object):
     self._r3_filter_total = 0
     self._r3_total = 0
     self._r1_filter_total = 0
+    self._r1_total = 0
     self._r_filter_rank = 0
     self._r_rank = 0
 
@@ -364,6 +367,7 @@ class EmbeddingsTest(object):
     predicts = [self._model.predict(d, self._model_variables, self._config.options) for d in test_data]
     while True:
       try:
+        self._test_total += self._config.options['batch_size']
         predicts_result, type_, triplets = self._session.run([predicts, type_op, triplets_op])
       except tf.errors.OutOfRangeError as e:
         return self._report()
@@ -380,7 +384,6 @@ class EmbeddingsTest(object):
   def _test_head(self, result, triplet):
     h, t, r = triplet
     predicted = result[h]
-    print(len(result), predicted)
 
     l_pos = 0
     l_filter_pos = 0
@@ -402,6 +405,8 @@ class EmbeddingsTest(object):
       self._l3_total += 1
     if l_filter_pos < 1:
       self._l1_filter_total += 1
+    if l_pos < 1:
+      self._l1_total += 1
 
     self._l_filter_rank += l_filter_pos + 1
     self._l_rank += 1 + l_pos
@@ -430,6 +435,8 @@ class EmbeddingsTest(object):
       self._r3_total += 1
     if r_filter_pos < 1:
       self._r1_filter_total += 1
+    if r_pos < 1:
+      self._r1_total += 1
 
     self._r_filter_rank += r_filter_pos + 1
     self._r_rank += 1 + r_pos
@@ -455,5 +462,8 @@ class EmbeddingsTest(object):
     return False
 
   def _report(self):
-    print(self._l_filter_total, self._l_total, self._l3_filter_total, self._l3_total, self._l1_filter_total, self._l_filter_rank, self._l_rank)
-    print(self._r_filter_total, self._r_total, self._r3_filter_total, self._r3_total, self._r1_filter_total, self._r_filter_rank, self._r_rank)
+    print("overall results:")
+    print("left %f %f %f %f" % (self._l_rank/ self._test_total, self._l_total / self._test_total, self._l3_total / self._test_total, self._l1_total / self._test_total))
+    print("left(filter) %f %f %f %f" % (self._l_filter_rank/ self._test_total, self._l_filter_total / self._test_total,  self._l3_filter_total / self._test_total,  self._l1_filter_total / self._test_total))
+    print("right %f %f %f %f" % (self._r_rank/ self._test_total, self._r_total / self._test_total,self._r3_total / self._test_total,self._r1_total / self._test_total))
+    print("right(filter) %f %f %f %f" % (self._r_filter_rank/ self._test_total, self._r_filter_total / self._test_total,self._r3_filter_total / self._test_total,self._r1_filter_total / self._test_total))

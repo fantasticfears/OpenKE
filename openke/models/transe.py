@@ -46,4 +46,4 @@ def predict(test_data, variables, options):
   predict_h_e = tf.Print(predict_h_e, [predict_h_e, tf.shape(predict_h_e)])
   predict_t_e = tf.Print(predict_t_e, [predict_t_e, tf.shape(predict_t_e)])
   predict_r_e = tf.Print(predict_r_e, [predict_r_e, tf.shape(predict_r_e)])
-  return tf.reduce_sum(tf.reduce_mean(_calc(predict_h_e, predict_t_e, predict_r_e), 1, keep_dims=False), 1)
+  return tf.reduce_sum(_calc(predict_h_e, predict_t_e, predict_r_e), 2, keep_dims=False)
