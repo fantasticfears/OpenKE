@@ -1,10 +1,10 @@
 model_options:
   general: &general
     embedding_size:
-      entity: 14952
-      relation: 1346
+      entity: 14505
+      relation: 237
       hidden: 50
-    train_iterations: 1000
+    train_iterations: 200
     margin: 1.0
     alpha: 0.001
     lambda: 0.000
