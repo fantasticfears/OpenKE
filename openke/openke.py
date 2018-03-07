@@ -354,9 +354,6 @@ class EmbeddingsTest(object):
       t_s = [range_ents] * batch_size
 
     batch = []
-    # h_s = tf.Print(h_s, [h_s])
-    # r_s = tf.Print(r_s, [r_s])
-    # t_s = tf.Print(t_s, [t_s])
     for h, r, t in zip(h_s, r_s, t_s):
       batch.append((h, r, t))
 
@@ -462,7 +459,7 @@ class EmbeddingsTest(object):
     return False
 
   def _report(self):
-    print("overall results:")
+    print("overall results: " + str(self._test_total))
     print("left %f %f %f %f" % (self._l_rank/ self._test_total, self._l_total / self._test_total, self._l3_total / self._test_total, self._l1_total / self._test_total))
     print("left(filter) %f %f %f %f" % (self._l_filter_rank/ self._test_total, self._l_filter_total / self._test_total,  self._l3_filter_total / self._test_total,  self._l1_filter_total / self._test_total))
     print("right %f %f %f %f" % (self._r_rank/ self._test_total, self._r_total / self._test_total,self._r3_total / self._test_total,self._r1_total / self._test_total))
