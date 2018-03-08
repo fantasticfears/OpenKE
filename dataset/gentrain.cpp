@@ -45,6 +45,7 @@ gentrain_init_buff(PyObject *self, PyObject *args)
 		right_mean = static_cast<double *>(calloc(num_relations, sizeof(double)));
     	return PyLong_FromLongLong(num_triplets);
 	}
+	randReset();
 }
 
 static PyObject *
@@ -67,7 +68,7 @@ gentrain_freq(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, ""))
         return NULL;
 
-	std::sort(trainList, trainList + num_entities, Triple::cmp_head);
+	std::sort(trainList, trainList + num_triplets, Triple::cmp_head);
 	long long unique_num_triplets = 1;
 	trainHead[0] = trainTail[0] = trainRel[0] = trainList[0];
 	freqEnt[trainList[0].t] += 1;
@@ -165,7 +166,7 @@ gentrain_yield_triplets(PyObject *self, PyObject *args)
     if (!PyArg_ParseTuple(args, "iip", &negRate, &negRelRate, &bernFlag)) {
 		return NULL;
 	}
-	int i = rand_max(0, num_entities);
+	int i = rand_max(0, num_triplets);
 	PyObject* list = PyList_New(0);
 	if (list == NULL) {
 		return NULL;
