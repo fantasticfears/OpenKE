@@ -138,32 +138,24 @@ class Step(object):
   def run(self, restore_if_available=True):
     """train next batch."""
 
-    losses = []
-    tower_grads = []
     with tf.variable_scope(tf.get_variable_scope()):
-      for i in range(self._config.num_gpus):
-        with tf.device('/gpu:%d' % i):
-          with tf.name_scope('%s_%d' % (self._config.name, 0)) as scope:
-            loss = self._model.loss(prepare_batch(self._next_element, self._config.options), self._model_variables, self._config.options)
+      with tf.name_scope('%s_%d' % (self._config.name, 0)) as scope:
+        loss = self._model.loss(prepare_batch(self._next_element, self._config.options), self._model_variables, self._config.options)
 
-            tf.get_variable_scope().reuse_variables()
-            # Retain the summaries from the final tower.
-            summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
+        tf.get_variable_scope().reuse_variables()
+        # Retain the summaries from the final tower.
+        summaries = tf.get_collection(tf.GraphKeys.SUMMARIES, scope)
 
-            grad = self._optimizer.compute_gradients(loss)
-            tower_grads.append(grad)
-            losses.append(loss)
+        grad_and_var = self._optimizer.compute_gradients(loss)
 
-    total_loss_op = tf.add_n(losses)
-    grads = self.average_gradients(tower_grads)
-
+    total_loss_op = loss
     # Add histograms for gradients.
-    for grad, var in grads:
+    for grad, var in grad_and_var:
       if grad is not None:
         summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
 
     # Apply the gradients to adjust the shared variables.
-    apply_gradient_op = self._optimizer.apply_gradients(grads, global_step=self._global_step)
+    apply_gradient_op = self._optimizer.apply_gradients(grad_and_var, global_step=self._global_step)
     summaries.append(tf.summary.scalar('global_step', self._global_step))
 
     # Add histograms for trainable variables.
