@@ -47,6 +47,7 @@ class Step(object):
     self._config = config
     config = tf.ConfigProto(allow_soft_placement=True,
                             log_device_placement=self._config.log_device_placement)
+    config.graph_options.optimizer_options.global_jit_level = tf.OptimizerOptions.ON_1
     self._session = tf.Session(config=config)
     self._saver = None
     self._optimizer = None

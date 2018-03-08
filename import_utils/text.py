@@ -52,8 +52,8 @@ def main():
                     entities_to_ids,
                     relations_to_ids,
                     FLAGS.dataset_dir,
-                    negative_relation_rate=1,
-                    negative_entity_rate=0,
+                    negative_relation_rate=0,
+                    negative_entity_rate=1,
                     bern=False,
                     skip_training_triplet=FLAGS.skip_training_triplet)
 

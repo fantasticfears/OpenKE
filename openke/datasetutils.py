@@ -117,6 +117,7 @@ def convert_dataset(num_triplets: int,
   sys.stdout.write('\r>> Proceeding to generate test triplets')
   sys.stdout.flush()
   max_entity = len(entities_to_ids)
+  test_triplets = []
   with tf.python_io.TFRecordWriter(os.path.join(dataset_dir, "test_triplets.tfrecord")) as writer:
     max_shard = read_triplet // 20 // batch_size + 1
     for type_ in ["head", "tail"]:
@@ -127,10 +128,13 @@ def convert_dataset(num_triplets: int,
           sys.stdout.write('\r>> Writing triplet shard %d/%d' % (
               shard + 1, max_shard))
 
-          triplets.append(gentrain.yield_triplets(0, 0, False))
+          t = gentrain.yield_triplets(0, 0, False)
+          triplets.append(t)
+          test_triplets.append(t[0])
 
         ex = test_triplets_to_tf_example(triplets, type_)
         writer.write(ex.SerializeToString())
+  write_training_triplets_file(test_triplets, 'test_triplets.list', dataset_dir)
 
   sys.stdout.write('\n')
   sys.stdout.flush()
