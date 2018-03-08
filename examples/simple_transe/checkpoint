@@ -1,0 +1,2 @@
+model_checkpoint_path: "/Users/erickg/Dev/OpenKE/examples/simple_transe/trans_e.ckpt-0"
+all_model_checkpoint_paths: "/Users/erickg/Dev/OpenKE/examples/simple_transe/trans_e.ckpt-0"

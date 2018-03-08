@@ -142,7 +142,7 @@ class Step(object):
     with tf.variable_scope(tf.get_variable_scope()):
       for i in range(self._config.num_gpus):
         with tf.device('/gpu:%d' % i):
-          with tf.name_scope('%s_%d' % (self._config.name, i)) as scope:
+          with tf.name_scope('%s_%d' % (self._config.name, 0)) as scope:
             loss = self._model.loss(prepare_batch(self._next_element, self._config.options), self._model_variables, self._config.options)
 
             tf.get_variable_scope().reuse_variables()
@@ -154,8 +154,7 @@ class Step(object):
             losses.append(loss)
 
     total_loss_op = tf.add_n(losses)
-    grads = tower_grads[0]
-    # grads = self.average_gradients(tower_grads)
+    grads = self.average_gradients(tower_grads)
 
     # Add histograms for gradients.
     for grad, var in grads:
