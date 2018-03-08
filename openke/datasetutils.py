@@ -91,7 +91,8 @@ def convert_dataset(num_triplets: int,
     sys.stdout.write('\r>> Read triplet %d' % (read_triplet))
     sys.stdout.flush()
 
-  gentrain.freq()
+  unique_num_triplets = gentrain.freq()
+  print("Unique training triplets" + str(unique_num_triplets))
 
   if not skip_training_triplet:
     training_triplets = []

@@ -25,27 +25,26 @@ Triple *trainRel;
 static PyObject *
 gentrain_init_buff(PyObject *self, PyObject *args)
 {
+	randReset();
     if (!PyArg_ParseTuple(args, "LLL", &num_triplets, &num_entities, &num_relations)) {
         return NULL;
-	} else {
-		read_triplets = 0;
-		trainList = static_cast<Triple *>(calloc(num_triplets, sizeof(Triple)));
-		trainHead = static_cast<Triple *>(calloc(num_triplets, sizeof(Triple)));
-		trainTail = static_cast<Triple *>(calloc(num_triplets, sizeof(Triple)));
-		trainRel = static_cast<Triple *>(calloc(num_triplets, sizeof(Triple)));
-		freqRel = static_cast<int *>(calloc(num_relations, sizeof(int)));
-		freqEnt = static_cast<int *>(calloc(num_entities, sizeof(int)));
-		lefHead = static_cast<int *>(calloc(num_entities, sizeof(int)));
-		rigHead = static_cast<int *>(calloc(num_entities, sizeof(int)));
-		lefTail = static_cast<int *>(calloc(num_entities, sizeof(int)));
-		rigTail = static_cast<int *>(calloc(num_entities, sizeof(int)));
-		lefRel = static_cast<int *>(calloc(num_relations, sizeof(int)));
-		rigRel = static_cast<int *>(calloc(num_relations, sizeof(int)));
-		left_mean = static_cast<double *>(calloc(num_relations, sizeof(double)));
-		right_mean = static_cast<double *>(calloc(num_relations, sizeof(double)));
-    	return PyLong_FromLongLong(num_triplets);
 	}
-	randReset();
+	read_triplets = 0;
+	trainList = static_cast<Triple *>(calloc(num_triplets, sizeof(Triple)));
+	trainHead = static_cast<Triple *>(calloc(num_triplets, sizeof(Triple)));
+	trainTail = static_cast<Triple *>(calloc(num_triplets, sizeof(Triple)));
+	trainRel = static_cast<Triple *>(calloc(num_triplets, sizeof(Triple)));
+	freqRel = static_cast<int *>(calloc(num_relations, sizeof(int)));
+	freqEnt = static_cast<int *>(calloc(num_entities, sizeof(int)));
+	lefHead = static_cast<int *>(calloc(num_entities, sizeof(int)));
+	rigHead = static_cast<int *>(calloc(num_entities, sizeof(int)));
+	lefTail = static_cast<int *>(calloc(num_entities, sizeof(int)));
+	rigTail = static_cast<int *>(calloc(num_entities, sizeof(int)));
+	lefRel = static_cast<int *>(calloc(num_relations, sizeof(int)));
+	rigRel = static_cast<int *>(calloc(num_relations, sizeof(int)));
+	left_mean = static_cast<double *>(calloc(num_relations, sizeof(double)));
+	right_mean = static_cast<double *>(calloc(num_relations, sizeof(double)));
+	return PyLong_FromLongLong(num_triplets);
 }
 
 static PyObject *
@@ -75,7 +74,7 @@ gentrain_freq(PyObject *self, PyObject *args)
 	freqEnt[trainList[0].h] += 1;
 	freqRel[trainList[0].r] += 1;
 	for (int i = 1; i < num_triplets; i++) {
-		if (!(trainList[i].h == trainList[i-1].h && trainList[i].r == trainList[i-1].r && trainList[i].t == trainList[i-1].t)) {
+		if (trainList[i].h == trainList[i-1].h && trainList[i].r == trainList[i-1].r && trainList[i].t == trainList[i-1].t) {
 			continue;
 		}
 		trainHead[unique_num_triplets] = trainTail[unique_num_triplets] =
@@ -139,7 +138,7 @@ gentrain_freq(PyObject *self, PyObject *args)
 		left_mean[i] = freqRel[i] / left_mean[i];
 		right_mean[i] = freqRel[i] / right_mean[i];
 	}
-    return PyLong_FromLongLong(num_entities);
+    return PyLong_FromLongLong(num_triplets);
 }
 
 static PyObject *
