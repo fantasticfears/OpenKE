@@ -41,7 +41,11 @@ def read_mapping_file(dataset_dir, filename):
 def write_training_triplets_file(triplets, filename: str, dataset_dir: str):
   labels_filename = os.path.join(dataset_dir, filename)
   with tf.gfile.Open(labels_filename, 'w') as label_file:
-    for h, r, t, _ in triplets:
+    for triplet in triplets:
+      if len(triplet) == 4:
+        h, r, t, _ = triplet
+      else:
+        h, r, t = triplet
       label_file.write('%d:%d:%d\n' % (h, r, t))
 
 def read_training_triplets_file(dataset_dir, filename):
@@ -83,6 +87,7 @@ def convert_dataset(num_triplets: int,
   print("Training triplets: " + str(num_triplets))
   gentrain.init_buff(num_triplets, len(entities_to_ids), len(relations_to_ids))
 
+  training_triplets = []
   for head, tail, relation in reader:
     triplet = (entities_to_ids[head],
                 relations_to_ids[relation],
@@ -90,12 +95,14 @@ def convert_dataset(num_triplets: int,
     read_triplet = gentrain.feed(triplet)
     sys.stdout.write('\r>> Read triplet %d' % (read_triplet))
     sys.stdout.flush()
+    training_triplets.append(triplet)
 
   unique_num_triplets = gentrain.freq()
   print("Unique training triplets" + str(unique_num_triplets))
 
+  tmp = 0
   if not skip_training_triplet:
-    training_triplets = []
+    # training_triplets = []
     sys.stdout.write('\r>> Proceeding to generate training triplets')
     sys.stdout.flush()
     with tf.python_io.TFRecordWriter(os.path.join(dataset_dir, "train_triplets.tfrecord")) as writer:
@@ -107,8 +114,11 @@ def convert_dataset(num_triplets: int,
               shard + 1, max_shard))
 
           t = gentrain.yield_triplets(negative_relation_rate, negative_entity_rate, bern)
+          if tmp < len(training_triplets):
+            t[0] = training_triplets[tmp]
+            tmp += 1
           triplets.append(t)
-          training_triplets.append(t[0])
+          # training_triplets.append(t[0])
 
         ex = triplets_to_tf_example(triplets)
         writer.write(ex.SerializeToString())
@@ -179,7 +189,12 @@ def triplets_to_tf_example(batch):
   neg_tail_tokens = ex.feature_lists.feature_list["negative_tails"]
 
   for triplets in batch:
-    for h, r, t, neg_flag in triplets:
+    for triplet in triplets:
+      if len(triplet) == 4:
+        h, r, t, neg_flag = triplet
+      else:
+        h, r, t = triplet
+        neg_flag = 1
       if neg_flag > 0:
         head_tokens.feature.add().int64_list.value.append(h)
         relation_tokens.feature.add().int64_list.value.append(r)
