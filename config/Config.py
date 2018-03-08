@@ -214,6 +214,7 @@ class Config(object):
 		with self.graph.as_default():
 			self.sess = tf.Session()
 			with self.sess.as_default():
+				self.summaries = tf.get_collection(tf.GraphKeys.SUMMARIES)
 				initializer = tf.contrib.layers.xavier_initializer(uniform = True)
 				with tf.variable_scope("model", reuse=None, initializer = initializer):
 					self.trainModel = self.model(config = self)
@@ -228,6 +229,14 @@ class Config(object):
 					else:
 						self.optimizer = tf.train.GradientDescentOptimizer(self.alpha)
 					grads_and_vars = self.optimizer.compute_gradients(self.trainModel.loss)
+					for grad, var in grads_and_vars:
+						if grad is not None:
+							self.summaries.append(tf.summary.histogram(var.op.name + '/gradients', grad))
+
+					with tf.name_scope("embedding"):
+					    for var in tf.trainable_variables():
+    						self.summaries.append(tf.summary.histogram(var.op.name, var))
+					self.summary_op = tf.summary.merge(self.summaries)
 					self.train_op = self.optimizer.apply_gradients(grads_and_vars)
 				self.saver = tf.train.Saver()
 				self.sess.run(tf.initialize_all_variables())
@@ -239,7 +248,8 @@ class Config(object):
 			self.trainModel.batch_r: batch_r,
 			self.trainModel.batch_y: batch_y
 		}
-		_, loss = self.sess.run([self.train_op, self.trainModel.loss], feed_dict)
+		summary_str, _, loss = self.sess.run([self.summary_op, self.train_op, self.trainModel.loss], feed_dict)
+		self.summary_writer.add_summary(summary_str, self.step)
 	 	return loss
 
 	def test_step(self, test_h, test_t, test_r):
@@ -254,12 +264,16 @@ class Config(object):
 	def run(self):
 		with self.graph.as_default():
 			with self.sess.as_default():
+				self.summary_writer = tf.summary.FileWriter(".", self.graph)
+				for var in tf.trainable_variables():
+					self.summaries.append(tf.summary.histogram(var.op.name, var))
 				if self.importName != None:
 					self.restore_tensorflow()
 				for times in range(self.train_times):
 					res = 0.0
 					for batch in range(self.nbatches):
 						self.sampling()
+						self.step = times * self.nbatches + batch
 						res += self.train_step(self.batch_h, self.batch_t, self.batch_r, self.batch_y)
 					if self.log_on:
 						print times
