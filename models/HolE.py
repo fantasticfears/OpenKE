@@ -1,7 +1,7 @@
 #coding:utf-8
 import numpy as np
 import tensorflow as tf
-from Model import *
+from .Model import *
 
 class HolE(Model):
 
@@ -42,7 +42,7 @@ class HolE(Model):
 		neg_h_e = tf.reshape(tf.nn.embedding_lookup(self.ent_embeddings, neg_h), [-1, config.hidden_size])
 		neg_t_e = tf.reshape(tf.nn.embedding_lookup(self.ent_embeddings, neg_t), [-1, config.hidden_size])
 		neg_r_e = tf.reshape(tf.nn.embedding_lookup(self.rel_embeddings, neg_r), [-1, config.hidden_size])
-		#Calculating score functions for all positive triples and negative triples 
+		#Calculating score functions for all positive triples and negative triples
 		#The shape of _p_score is (batch_size, 1, 1)
 		#The shape of _n_score is (batch_size, negative_ent + negative_rel, 1)
 		_p_score = tf.reshape(self._calc(pos_h_e, pos_t_e, pos_r_e), [-1, 1])

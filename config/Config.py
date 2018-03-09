@@ -49,7 +49,7 @@ class Config(object):
 			self.relTotal = self.lib.getRelationTotal()
 			self.entTotal = self.lib.getEntityTotal()
 			self.trainTotal = self.lib.getTrainTotal()
-			self.batch_size = self.lib.getTrainTotal() / self.nbatches
+			self.batch_size = self.lib.getTrainTotal() // self.nbatches
 			self.batch_seq_size = self.batch_size * (1 + self.negative_ent + self.negative_rel)
 			self.batch_h = np.zeros(self.batch_size * (1 + self.negative_ent + self.negative_rel), dtype = np.int64)
 			self.batch_t = np.zeros(self.batch_size * (1 + self.negative_ent + self.negative_rel), dtype = np.int64)
@@ -250,7 +250,7 @@ class Config(object):
 		}
 		summary_str, _, loss = self.sess.run([self.summary_op, self.train_op, self.trainModel.loss], feed_dict)
 		self.summary_writer.add_summary(summary_str, self.step)
-	 	return loss
+		return loss
 
 	def test_step(self, test_h, test_t, test_r):
 		feed_dict = {
@@ -276,8 +276,8 @@ class Config(object):
 						self.step = times * self.nbatches + batch
 						res += self.train_step(self.batch_h, self.batch_t, self.batch_r, self.batch_y)
 					if self.log_on:
-						print times
-						print res
+						print(times)
+						print(res)
 					if self.exportName != None and (self.export_steps!=0 and times % self.export_steps == 0):
 						self.save_tensorflow()
 				if self.exportName != None:
@@ -300,5 +300,5 @@ class Config(object):
 					res = self.test_step(self.test_h, self.test_t, self.test_r)
 					self.lib.testTail(res.__array_interface__['data'][0])
 					if self.log_on:
-						print times
+						print(times)
 				self.lib.test()
