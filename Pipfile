@@ -8,6 +8,8 @@ name = "pypi"
 [packages]
 
 tensorflow = "*"
+"autopep8" = "*"
+pyyaml = "*"
 
 
 [dev-packages]

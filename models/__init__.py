@@ -1,9 +1,4 @@
-from .Model import *
-from .TransE import *
-from .TransH import *
-from .TransD import *
-from .TransR import *
-from .RESCAL import *
-from .DistMult import *
-from .HolE import *
-from .ComplEx import *
+from .transe import *
+from .complex import *
+
+__all__ = ['transe', 'complex']

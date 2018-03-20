@@ -1,0 +1,28 @@
+model_options:
+  general: &general
+    embedding_size: 100
+    margin: 1.0
+    alpha: 0.1
+    lambda: 0.0001
+    bern: false
+  transE: &transE
+    <<: *general
+
+name: "simple_transe"
+threads: 32
+num_gpus: 1
+log_device_placement: true
+
+flow:
+  - model: ComplEx
+    log_level: VERBOSE
+    optimizer: Adagrad
+    nbatches: 1
+    negative_relation: 0
+    negative_entity: 1
+    train_iterations: 1500
+    export_path: 'res'
+    export_json: true
+    options:
+      <<: *general
+

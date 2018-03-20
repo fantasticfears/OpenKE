@@ -40,7 +40,7 @@ void getTailBatch(INT *ph, INT *pt, INT *pr) {
 }
 
 extern "C"
-void testHead(REAL *con) {
+void testHead(REAL *con, bool verbose) {
 	INT h = testList[lastHead].h;
 	INT t = testList[lastHead].t;
 	INT r = testList[lastHead].r;
@@ -68,12 +68,14 @@ void testHead(REAL *con) {
 	l_filter_rank += (l_filter_s+1);
 	l_rank += (1+l_s);
 	lastHead++;
-	printf("l_filter_s: %ld\n", l_filter_s);
-	printf("%f %f %f %f\n", l_tot / lastHead, l_filter_tot / lastHead, l_rank / lastHead, l_filter_rank / lastHead);
+    if (verbose) {
+    	printf("l_filter_s: %ld\n", l_filter_s);
+    	printf("%f %f %f %f\n", l_tot / lastHead, l_filter_tot / lastHead, l_rank / lastHead, l_filter_rank / lastHead);
+    }
 }
 
 extern "C"
-void testTail(REAL *con) {
+void testTail(REAL *con, bool verbose) {
 	INT h = testList[lastTail].h;
 	INT t = testList[lastTail].t;
 	INT r = testList[lastTail].r;
@@ -101,8 +103,10 @@ void testTail(REAL *con) {
 	r_filter_rank += (1+r_filter_s);
 	r_rank += (1+r_s);
 	lastTail++;
-    printf("r_filter_s: %ld\n", r_filter_s);
-	printf("%f %f %f %f\n", r_tot /lastTail, r_filter_tot /lastTail, r_rank /lastTail, r_filter_rank /lastTail);
+    if (verbose) {
+        printf("r_filter_s: %ld\n", r_filter_s);
+        printf("%f %f %f %f\n", r_tot /lastTail, r_filter_tot /lastTail, r_rank /lastTail, r_filter_rank /lastTail);
+    }
 }
 
 extern "C"
