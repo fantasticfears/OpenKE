@@ -210,56 +210,42 @@ INT* tail_type;
 
 extern "C"
 void importTypeFiles() {
-
     head_lef = (INT *)calloc(relationTotal, sizeof(INT));
     head_rig = (INT *)calloc(relationTotal, sizeof(INT));
     tail_lef = (INT *)calloc(relationTotal, sizeof(INT));
     tail_rig = (INT *)calloc(relationTotal, sizeof(INT));
     INT total_lef = 0;
     INT total_rig = 0;
-    FILE* f_type = fopen((inPath + "type_constrain.txt").c_str(),"r");
-    INT tmp;
-    tmp = fscanf(f_type, "%ld", &tmp);
+    // FILE* f_type = fopen((inPath + "type_constrain.txt").c_str(),"r");
+    // INT tmp;
+    // tmp = fscanf(f_type, "%ld", &tmp);
+    // for (INT i = 0; i < relationTotal; i++) {
+    //     INT rel, tot;
+    //     tmp = fscanf(f_type, "%ld %ld", &rel, &tot);
+    //     for (INT j = 0; j < tot; j++) {
+    //         tmp = fscanf(f_type, "%ld", &tmp);
+    //         total_lef++;
+    //     }
+    //     tmp = fscanf(f_type, "%ld%ld", &rel, &tot);
+    //     for (INT j = 0; j < tot; j++) {
+    //         tmp = fscanf(f_type, "%ld", &tmp);
+    //         total_rig++;
+    //     }
+    // }
+    // fclose(f_type);
+    // head_type = (INT *)calloc(total_lef, sizeof(INT)); 
+    // tail_type = (INT *)calloc(total_rig, sizeof(INT));
+    // total_lef = 0;
+    // total_rig = 0;
+    // f_type = fopen((inPath + "type_constrain.txt").c_str(),"r");
+    // tmp = fscanf(f_type, "%ld", &tmp);
     for (INT i = 0; i < relationTotal; i++) {
-        INT rel, tot;
-        tmp = fscanf(f_type, "%ld %ld", &rel, &tot);
-        for (INT j = 0; j < tot; j++) {
-            tmp = fscanf(f_type, "%ld", &tmp);
-            total_lef++;
-        }
-        tmp = fscanf(f_type, "%ld%ld", &rel, &tot);
-        for (INT j = 0; j < tot; j++) {
-            tmp = fscanf(f_type, "%ld", &tmp);
-            total_rig++;
-        }
-    }
-    fclose(f_type);
-    head_type = (INT *)calloc(total_lef, sizeof(INT)); 
-    tail_type = (INT *)calloc(total_rig, sizeof(INT));
-    total_lef = 0;
-    total_rig = 0;
-    f_type = fopen((inPath + "type_constrain.txt").c_str(),"r");
-    tmp = fscanf(f_type, "%ld", &tmp);
-    for (INT i = 0; i < relationTotal; i++) {
-        INT rel, tot;
-        tmp = fscanf(f_type, "%ld%ld", &rel, &tot);
+        INT rel = 1, tot = 20;
         head_lef[rel] = total_lef;
-        for (INT j = 0; j < tot; j++) {
-            tmp = fscanf(f_type, "%ld", &head_type[total_lef]);
-            total_lef++;
-        }
         head_rig[rel] = total_lef;
-        std::sort(head_type + head_lef[rel], head_type + head_rig[rel]);
-        tmp = fscanf(f_type, "%ld%ld", &rel, &tot);
         tail_lef[rel] = total_rig;
-        for (INT j = 0; j < tot; j++) {
-            tmp = fscanf(f_type, "%ld", &tail_type[total_rig]);
-            total_rig++;
-        }
         tail_rig[rel] = total_rig;
-        std::sort(tail_type + tail_lef[rel], tail_type + tail_rig[rel]);
     }
-    fclose(f_type);
 }
 
 

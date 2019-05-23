@@ -1,0 +1,127 @@
++./tmTransE.sh:18> python3 train_transe.py dataset300
+Input Files Path : /data/wikidata/dataset300/
+The toolkit is importing datasets.
+The total of relations is 37.
+The total of entities is 73819.
+The total of train triples is 873487.
+The total of test triples is 9057.
+The total of valid triples is 9057.
+/usr/local/lib/python3.7/site-packages/torch/nn/_reduction.py:49: UserWarning: size_average and reduce args will be deprecated, please use reduction='sum' instead.
+  warnings.warn(warning.format(ret))
+/MIUN/OpenKE/models/TransE.py:19: UserWarning: nn.init.xavier_uniform is now deprecated in favor of nn.init.xavier_uniform_.
+  nn.init.xavier_uniform(self.ent_embeddings.weight.data)
+/MIUN/OpenKE/models/TransE.py:20: UserWarning: nn.init.xavier_uniform is now deprecated in favor of nn.init.xavier_uniform_.
+  nn.init.xavier_uniform(self.rel_embeddings.weight.data)
+here
+Initializing training model...
+Finish initializing
+Epoch 0 | loss: 2132852.897339
+Epoch 1 | loss: 2272339.360229
+Epoch 2 | loss: 2290743.626587
+Epoch 3 | loss: 2399845.085449
+Epoch 4 | loss: 2400021.360596
+Epoch 5 | loss: 2407151.583862
+Epoch 6 | loss: 2417045.944458
+Epoch 7 | loss: 2338118.873169
+Epoch 8 | loss: 2345961.101929
+Epoch 9 | loss: 2187836.085083
+Epoch 10 | loss: 1745344.120850
+Epoch 11 | loss: 1254301.642151
+Epoch 12 | loss: 1007707.528748
+Epoch 13 | loss: 976106.543152
+Epoch 14 | loss: 944336.501892
+Epoch 15 | loss: 936763.376038
+Epoch 16 | loss: 916920.613953
+Epoch 17 | loss: 897956.286011
+Epoch 18 | loss: 887769.820312
+Epoch 19 | loss: 875847.272583
+Epoch 20 | loss: 841479.646179
+Epoch 21 | loss: 810656.909607
+Epoch 22 | loss: 824290.592682
+Epoch 23 | loss: 794729.569550
+Epoch 24 | loss: 766470.420135
+Epoch 25 | loss: 746803.963806
+Epoch 26 | loss: 727477.500427
+Epoch 27 | loss: 729676.599609
+Epoch 28 | loss: 691669.918945
+Epoch 29 | loss: 669008.098999
+Epoch 30 | loss: 648834.795563
+Epoch 31 | loss: 620044.781250
+Epoch 32 | loss: 592536.795532
+Epoch 33 | loss: 573470.926361
+Epoch 34 | loss: 543306.728760
+Epoch 35 | loss: 517797.153229
+Epoch 36 | loss: 510260.181152
+Epoch 37 | loss: 493588.131165
+Epoch 38 | loss: 476794.919006
+Epoch 39 | loss: 446545.793091
+Epoch 40 | loss: 423011.307724
+Epoch 41 | loss: 396484.815002
+Epoch 42 | loss: 387559.952835
+Epoch 43 | loss: 366619.790909
+Epoch 44 | loss: 338379.100739
+Epoch 45 | loss: 315312.546356
+Epoch 46 | loss: 304363.661392
+Epoch 47 | loss: 284590.070892
+Epoch 48 | loss: 276067.666611
+Epoch 49 | loss: 257362.479752
+Epoch 50 | loss: 238424.160889
+Epoch 51 | loss: 226605.695641
+Epoch 52 | loss: 216114.207169
+Epoch 53 | loss: 204337.814667
+Epoch 54 | loss: 194865.947556
+Epoch 55 | loss: 184682.306648
+Epoch 56 | loss: 179838.636673
+Epoch 57 | loss: 167750.172798
+Epoch 58 | loss: 162568.023689
+Epoch 59 | loss: 156656.178352
+Epoch 60 | loss: 154227.524170
+Epoch 61 | loss: 150232.895973
+Epoch 62 | loss: 140492.414696
+Epoch 63 | loss: 132110.470200
+Epoch 64 | loss: 128254.663765
+Epoch 65 | loss: 130455.937378
+Epoch 66 | loss: 124279.600952
+Epoch 67 | loss: 120098.949554
+Epoch 68 | loss: 115967.583344
+Epoch 69 | loss: 110332.525383
+Epoch 70 | loss: 110654.023033
+Epoch 71 | loss: 106011.163773
+Epoch 72 | loss: 105046.710587
+Epoch 73 | loss: 102607.555565
+Epoch 74 | loss: 98182.137474
+Epoch 75 | loss: 94530.657677
+Epoch 76 | loss: 95424.608177
+Epoch 77 | loss: 91172.634445
+Epoch 78 | loss: 89721.930702
+Epoch 79 | loss: 86500.244568
+Epoch 80 | loss: 86813.962189
+Epoch 81 | loss: 82053.504845
+Epoch 82 | loss: 80676.070274
+Epoch 83 | loss: 78827.044128
+Epoch 84 | loss: 77082.452576
+Epoch 85 | loss: 75323.727577
+Epoch 86 | loss: 76069.705994
+Epoch 87 | loss: 73185.215439
+Epoch 88 | loss: 72241.450493
+Epoch 89 | loss: 68258.876114
+Epoch 90 | loss: 68742.154320
+Epoch 91 | loss: 68157.110718
+Epoch 92 | loss: 65102.782440
+Epoch 93 | loss: 65605.135117
+Epoch 94 | loss: 63965.053558
+Epoch 95 | loss: 63504.122696
+Epoch 96 | loss: 62958.749481
+Epoch 97 | loss: 62796.953667
+Epoch 98 | loss: 61791.468903
+Epoch 99 | loss: 59224.932060
+Epoch 99 has finished, saving...
+Best epoch is 0 | hit@10 of valid set is 0.000000
+Store checkpoint of best result at epoch 0...
+( python3 train_transe.py dataset$i; )   225.44s  user 112.80s system 110% cpu 5:07.25 total
+avg shared (code):         0 KB
+avg unshared (data/stack): 0 KB
+total (sum):               0 KB
+max memory:                2333 MB
+page faults from disk:     0
+other page faults:         2585283

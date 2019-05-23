@@ -425,6 +425,7 @@ class Config(object):
             best_model = self.trainModel.state_dict()
             best_epoch = self.train_times - 1
             best_hit10 = self.valid(self.trainModel)
+        best_model = self.trainModel.state_dict()
         print("Best epoch is %d | hit@10 of valid set is %f" % (best_epoch, best_hit10))
         print("Store checkpoint of best result at epoch %d..." % (best_epoch))
         if not os.path.isdir(self.result_dir):
@@ -432,10 +433,10 @@ class Config(object):
         self.save_best_checkpoint(best_model)
         self.save_embedding_matrix(best_model)
         print("Finish storing")
-        print("Testing...")
-        self.set_test_model(self.model)
-        self.test()
-        print("Finish test")
+        # print("Testing...")
+        # self.set_test_model(self.model)
+        # self.test()
+        # print("Finish test")
         return best_model
 
     def link_prediction(self):
